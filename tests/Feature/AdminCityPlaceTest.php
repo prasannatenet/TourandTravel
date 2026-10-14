@@ -53,11 +53,12 @@ class AdminCityPlaceTest extends TestCase
             'secondary_images' => [UploadedFile::fake()->create('s1.jpg', 500, 'image/jpeg')],
             'visit_duration_hours' => 3.5,
             'best_time_to_visit' => 'evening',
+            'price_per_person' => 250,
             'note' => 'Carry sunscreen.',
         ]);
 
         $response->assertRedirect(route('admin.places.index'));
-        $this->assertDatabaseHas('city_places', ['name' => 'Baga Beach', 'slug' => 'baga-beach', 'best_time_to_visit' => 'evening']);
+        $this->assertDatabaseHas('city_places', ['name' => 'Baga Beach', 'slug' => 'baga-beach', 'best_time_to_visit' => 'evening', 'price_per_person' => 250]);
         $place = CityPlace::where('slug', 'baga-beach')->first();
         $this->assertEquals($city->id, $place->city_id);
         $this->assertCount(1, $place->secondary_images);
@@ -79,6 +80,7 @@ class AdminCityPlaceTest extends TestCase
             'primary_image' => UploadedFile::fake()->create('p.jpg', 500, 'image/jpeg'),
             'visit_duration_hours' => 2,
             'best_time_to_visit' => 'evening',
+            'price_per_person' => 100,
         ])->assertSessionHasErrors('city_id');
     }
 
@@ -99,6 +101,107 @@ class AdminCityPlaceTest extends TestCase
             'visit_duration_hours' => 2,
             'best_time_to_visit' => 'midnight',
         ])->assertSessionHasErrors('best_time_to_visit');
+    }
+
+    public function test_price_per_person_is_required_on_create(): void
+    {
+        $this->actingAs($this->admin());
+        $city = $this->city();
+        $city->load(['state.country']);
+
+        $this->post(route('admin.places.store'), [
+            'country_id' => $city->state->country_id,
+            'state_id' => $city->state_id,
+            'city_id' => $city->id,
+            'name' => 'Baga Beach',
+            'place_description' => 'Famous beach.',
+            'description' => 'Full details.',
+            'primary_image' => UploadedFile::fake()->create('p.jpg', 500, 'image/jpeg'),
+            'visit_duration_hours' => 2,
+            'best_time_to_visit' => 'evening',
+        ])->assertSessionHasErrors('price_per_person');
+    }
+
+    public function test_negative_price_per_person_is_rejected(): void
+    {
+        $this->actingAs($this->admin());
+        $city = $this->city();
+        $city->load(['state.country']);
+
+        $this->post(route('admin.places.store'), [
+            'country_id' => $city->state->country_id,
+            'state_id' => $city->state_id,
+            'city_id' => $city->id,
+            'name' => 'Baga Beach',
+            'place_description' => 'Famous beach.',
+            'description' => 'Full details.',
+            'primary_image' => UploadedFile::fake()->create('p.jpg', 500, 'image/jpeg'),
+            'visit_duration_hours' => 2,
+            'best_time_to_visit' => 'evening',
+            'price_per_person' => -5,
+        ])->assertSessionHasErrors('price_per_person');
+    }
+
+    public function test_admin_can_update_place_with_cascade_fields(): void
+    {
+        Storage::fake('public');
+        $city = $this->city();
+        $city->load(['state.country']);
+        $place = CityPlace::create([
+            'city_id' => $city->id,
+            'name' => 'Baga Beach',
+            'place_description' => 'Famous beach.',
+            'description' => 'Full details.',
+            'primary_image' => 'x.jpg',
+            'secondary_images' => [],
+            'visit_duration_hours' => 2,
+            'best_time_to_visit' => 'evening',
+            'price_per_person' => 100,
+        ]);
+
+        $response = $this->actingAs($this->admin())->put(route('admin.places.update', $place), [
+            'country_id' => $city->state->country_id,
+            'state_id' => $city->state_id,
+            'city_id' => $city->id,
+            'name' => 'Baga Beach',
+            'place_description' => 'Famous beach.',
+            'description' => 'Updated full details.',
+            'visit_duration_hours' => 3,
+            'best_time_to_visit' => 'morning',
+            'price_per_person' => 350,
+            'note' => 'Updated note.',
+        ]);
+
+        $response->assertRedirect(route('admin.places.index'));
+        $this->assertDatabaseHas('city_places', [
+            'id' => $place->id,
+            'description' => 'Updated full details.',
+            'best_time_to_visit' => 'morning',
+            'price_per_person' => 350,
+        ]);
+    }
+
+    public function test_update_from_edit_form_includes_country_and_state_names(): void
+    {
+        $city = $this->city();
+        $city->load(['state.country']);
+        $place = CityPlace::create([
+            'city_id' => $city->id,
+            'name' => 'Baga Beach',
+            'place_description' => 'Famous beach.',
+            'description' => 'Full details.',
+            'primary_image' => 'x.jpg',
+            'secondary_images' => [],
+            'visit_duration_hours' => 2,
+            'best_time_to_visit' => 'evening',
+            'price_per_person' => 100,
+        ]);
+
+        $response = $this->actingAs($this->admin())->get(route('admin.places.edit', $place));
+        $response->assertStatus(200);
+        $response->assertSee('name="country_id"', false);
+        $response->assertSee('name="state_id"', false);
+        $response->assertSee('name="city_id"', false);
     }
 
     public function test_places_index_is_table_with_view_button(): void
