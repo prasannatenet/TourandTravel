@@ -17,6 +17,7 @@
 <span class="bg-slate-100 px-2.5 py-1 rounded-full">{{ $place->city->state->name }}</span>
 <span class="bg-slate-100 px-2.5 py-1 rounded-full">{{ $place->city->name }}</span>
 <span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full">{{ $place->visit_duration_hours }} hrs visit</span>
+<span class="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full">Rs.{{ number_format($place->price_per_person) }} / person</span>
 <span class="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full capitalize">Best: {{ $place->best_time_to_visit }}</span>
 </div>
 <h2 class="text-sm font-semibold text-slate-500 uppercase">Place Description (short)</h2>
@@ -50,6 +51,7 @@
 <div class="flex justify-between gap-2"><dt class="text-slate-500">Slug</dt><dd class="font-mono text-xs text-right">{{ $place->slug }}</dd></div>
 <div class="flex justify-between gap-2"><dt class="text-slate-500">Duration</dt><dd class="font-semibold text-right">{{ $place->visit_duration_hours }} hours</dd></div>
 <div class="flex justify-between gap-2"><dt class="text-slate-500">Best Time</dt><dd class="font-semibold capitalize text-right">{{ $place->best_time_to_visit }}</dd></div>
+<div class="flex justify-between gap-2"><dt class="text-slate-500">Price / Person</dt><dd class="font-semibold text-right">Rs.{{ number_format($place->price_per_person) }}</dd></div>
 <div class="flex justify-between gap-2"><dt class="text-slate-500">Gallery</dt><dd class="font-semibold text-right">{{ count($place->secondary_images ?? []) }} imgs</dd></div>
 <div class="flex justify-between gap-2"><dt class="text-slate-500">Created</dt><dd class="text-right">{{ $place->created_at->format('d M Y') }}</dd></div>
 </dl>

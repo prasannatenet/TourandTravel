@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\City;
 use App\Models\CityPlace;
 use App\Models\Country;
@@ -35,7 +36,7 @@ class TourPackageController extends Controller
             $query->where('is_active', $isActive);
         }
 
-        $packages = $query->latest('id')->paginate(15)->withQueryString();
+        $packages = $query->with('destinations')->latest('id')->paginate(15)->withQueryString();
 
         $countries = Country::orderBy('name')->get();
         $states = State::with('country')->orderBy('name')->get();
@@ -43,17 +44,19 @@ class TourPackageController extends Controller
 
         $hasFilter = $search || $departureCity || is_bool($isActive);
 
-        return view('admin.destinations.packages.index', compact('packages', 'countries', 'states', 'cities', 'search', 'departureCity', 'isActive', 'hasFilter'));
+        return view('admin.packages.index', compact('packages', 'countries', 'states', 'cities', 'search', 'departureCity', 'isActive', 'hasFilter'));
     }
 
     public function create(): View
     {
-        return view('admin.destinations.packages.create', [
+        return view('admin.packages.create', [
             'countries' => Country::orderBy('name')->get(),
             'states' => State::with('country')->orderBy('name')->get(),
             'cities' => City::with('state')->orderBy('name')->get(),
+            'places' => CityPlace::with(['city.state.country'])->orderBy('name')->get(),
         ]);
     }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -65,6 +68,15 @@ class TourPackageController extends Controller
             'nights' => ['required', 'integer', 'min:1', 'max:99'],
             'destinations' => ['nullable', 'array'],
             'destinations.country' => ['nullable', 'array'],
+            'destinations.country.*' => ['integer', 'exists:countries,id'],
+            'destinations.state' => ['nullable', 'array'],
+            'destinations.state.*' => ['integer', 'exists:states,id'],
+            'destinations.city' => ['nullable', 'array'],
+            'destinations.city.*' => ['integer', 'exists:cities,id'],
+            'destinations.place' => ['nullable', 'array'],
+            'destinations.place.*' => ['integer', 'exists:city_places,id'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'is_active' => ['sometimes', 'boolean'],
         ]);
 
         $image = null;
@@ -81,23 +93,27 @@ class TourPackageController extends Controller
 
         return redirect()->route('admin.packages.index')->with('success', 'Package created.');
     }
+
     public function show(TourPackage $package): View
     {
         $package->load('destinations');
 
-        return view('admin.destinations.packages.show', compact('package'));
+        return view('admin.packages.show', compact('package'));
     }
+
     public function edit(TourPackage $package): View
     {
         $package->load('destinations');
 
-        return view('admin.destinations.packages.edit', [
+        return view('admin.packages.edit', [
             'package' => $package,
             'countries' => Country::orderBy('name')->get(),
             'states' => State::with('country')->orderBy('name')->get(),
             'cities' => City::with('state')->orderBy('name')->get(),
+            'places' => CityPlace::with(['city.state.country'])->orderBy('name')->get(),
         ]);
     }
+
     public function update(Request $request, TourPackage $package): RedirectResponse
     {
         $validated = $request->validate([
@@ -137,6 +153,7 @@ class TourPackageController extends Controller
 
         return redirect()->route('admin.packages.index')->with('success', 'Package updated.');
     }
+
     public function destroy(TourPackage $package): RedirectResponse
     {
         if ($package->image) {
@@ -157,7 +174,7 @@ class TourPackageController extends Controller
             'state' => State::class,
             'city' => City::class,
             'place' => CityPlace::class,
-            default => throw new \InvalidArgumentException('Unknown destination type: ' . $type),
+            default => throw new \InvalidArgumentException('Unknown destination type: '.$type),
         };
     }
 

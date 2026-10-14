@@ -65,6 +65,7 @@
 <th class="text-left px-4 py-3">City</th>
 <th class="text-left px-4 py-3">Duration</th>
 <th class="text-left px-4 py-3">Best Time</th>
+<th class="text-left px-4 py-3">Price / Person</th>
 <th class="text-left px-4 py-3">Actions</th>
 </tr>
 </thead>
@@ -78,6 +79,7 @@
 <td class="px-4 py-2">{{ $p->city->name }}</td>
 <td class="px-4 py-2 whitespace-nowrap">{{ $p->visit_duration_hours }} hrs</td>
 <td class="px-4 py-2 capitalize"><span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full">{{ $p->best_time_to_visit }}</span></td>
+<td class="px-4 py-2 whitespace-nowrap">Rs.{{ number_format($p->price_per_person) }}</td>
 <td class="px-4 py-2">
 <div class="flex gap-1.5">
 <a href="{{ route('admin.places.show', $p) }}" class="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">View</a>
@@ -87,7 +89,7 @@
 </td>
 </tr>
 @empty
-<tr><td colspan="8" class="px-4 py-8 text-center text-slate-500">No places yet. <a class="text-blue-600 font-semibold" href="{{ route('admin.places.create') }}">Add one</a>.</td></tr>
+<tr><td colspan="9" class="px-4 py-8 text-center text-slate-500">No places yet. <a class="text-blue-600 font-semibold" href="{{ route('admin.places.create') }}">Add one</a>.</td></tr>
 @endforelse
 </tbody>
 </table>

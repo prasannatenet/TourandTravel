@@ -109,6 +109,7 @@ class CityPlaceController extends Controller
             'secondary_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'visit_duration_hours' => ['required', 'numeric', 'min:0.5', 'max:72'],
             'best_time_to_visit' => ['required', Rule::in(CityPlace::BEST_TIMES)],
+            'price_per_person' => ['required', 'numeric', 'min:0', 'max:999999.99'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -162,6 +163,7 @@ class CityPlaceController extends Controller
             'secondary_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'visit_duration_hours' => ['required', 'numeric', 'min:0.5', 'max:72'],
             'best_time_to_visit' => ['required', Rule::in(CityPlace::BEST_TIMES)],
+            'price_per_person' => ['required', 'numeric', 'min:0', 'max:999999.99'],
             'note' => ['nullable', 'string', 'max:1000'],
             'remove_secondary' => ['nullable', 'array'],
             'remove_secondary.*' => ['string'],

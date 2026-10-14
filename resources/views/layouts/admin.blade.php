@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Admin Dashboard') | {{ config('app.name', 'Tour & Travel') }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    {{-- <script src="https://cdn.tailwindcss.com"></script> --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
@@ -30,6 +31,9 @@
         <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
             <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
                 <i class="fa-solid fa-gauge-high w-5 text-center"></i> Dashboard
+            </a>
+            <a href="{{ route('admin.packages.index') }}" class="sidebar-link {{ request()->routeIs('admin.packages.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                <i class="fa-solid fa-suitcase-rolling w-5 text-center"></i> Packages
             </a>
             @php($destinationOpen = request()->routeIs('admin.countries.*', 'admin.states.*', 'admin.cities.*', 'admin.places.*'))
             <div class="rounded-lg">
@@ -100,6 +104,7 @@
             <!-- Mobile nav -->
             <nav class="md:hidden px-4 pb-3 flex gap-2 overflow-x-auto text-sm">
                 <a href="{{ route('admin.dashboard') }}" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg whitespace-nowrap">Dashboard</a>
+                <a href="{{ route('admin.packages.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Packages</a>
                 <a href="{{ route('admin.countries.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Country</a>
                 <a href="{{ route('admin.states.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">State</a>
                 <a href="{{ route('admin.cities.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">City</a>

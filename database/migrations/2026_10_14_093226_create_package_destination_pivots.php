@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,12 +13,11 @@ return new class extends Migration
     {
         Schema::create('package_destination_pivots', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('package_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('package_id');
             $table->string('destination_type');
             $table->unsignedBigInteger('destination_id');
             $table->unsignedInteger('position')->default(0);
             $table->timestamps();
-            $table->unique(['package_id', 'destination_type', 'destination_id']);
         });
     }
 

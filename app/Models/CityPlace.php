@@ -20,6 +20,7 @@ class CityPlace extends Model
         'secondary_images',
         'visit_duration_hours',
         'best_time_to_visit',
+        'price_per_person',
         'note',
     ];
 
@@ -28,6 +29,7 @@ class CityPlace extends Model
         return [
             'secondary_images' => 'array',
             'visit_duration_hours' => 'decimal:1',
+            'price_per_person' => 'decimal:2',
         ];
     }
 

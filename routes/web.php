@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\CityPlaceController;
 use App\Http\Controllers\Admin\CountryController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\StateController;
+use App\Http\Controllers\Admin\TourPackageController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {

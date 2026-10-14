@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class PackageDestination extends Model
 {
+    protected $table = 'package_destination_pivots';
+
     protected $fillable = [
         'package_id',
         'destination_type',
