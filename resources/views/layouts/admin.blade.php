@@ -35,6 +35,9 @@
             <a href="{{ route('admin.packages.index') }}" class="sidebar-link {{ request()->routeIs('admin.packages.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
                 <i class="fa-solid fa-suitcase-rolling w-5 text-center"></i> Packages
             </a>
+            <a href="{{ route('admin.inclusions.index') }}" class="sidebar-link {{ request()->routeIs('admin.inclusions.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                <i class="fa-solid fa-list-check w-5 text-center"></i> Package Inclusions
+            </a>
             @php($destinationOpen = request()->routeIs('admin.countries.*', 'admin.states.*', 'admin.cities.*', 'admin.places.*'))
             <div class="rounded-lg">
                 <button type="button" id="destinationToggle" aria-expanded="{{ $destinationOpen ? 'true' : 'false' }}" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
@@ -105,6 +108,7 @@
             <nav class="md:hidden px-4 pb-3 flex gap-2 overflow-x-auto text-sm">
                 <a href="{{ route('admin.dashboard') }}" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg whitespace-nowrap">Dashboard</a>
                 <a href="{{ route('admin.packages.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Packages</a>
+                <a href="{{ route('admin.inclusions.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Inclusions</a>
                 <a href="{{ route('admin.countries.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Country</a>
                 <a href="{{ route('admin.states.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">State</a>
                 <a href="{{ route('admin.cities.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">City</a>

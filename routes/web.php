@@ -5,13 +5,18 @@ use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CityPlaceController;
 use App\Http\Controllers\Admin\CountryController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\PackageInclusionController;
 use App\Http\Controllers\Admin\StateController;
 use App\Http\Controllers\Admin\TourPackageController;
+use App\Http\Controllers\Frontend\PackageFrontendController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('admin.login');
+    return redirect()->route('packages.index');
 });
+
+Route::get('/packages', [PackageFrontendController::class, 'index'])->name('packages.index');
+Route::get('/packages/{slug}', [PackageFrontendController::class, 'show'])->name('packages.show');
 
 Route::prefix('admin')->name('admin.')->group(function (): void {
     Route::middleware('guest')->group(function (): void {
@@ -30,9 +35,11 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::resource('states', StateController::class)->except(['show']);
         Route::resource('cities', CityController::class)->except(['show']);
         Route::resource('places', CityPlaceController::class);
+        Route::get('places/city/{city}', [CityPlaceController::class, 'cityPlaces'])->name('places.city.index');
         Route::get('countries/{country}/states', [CityPlaceController::class, 'statesByCountry'])->name('places.states-by-country');
         Route::get('states/{state}/cities', [CityPlaceController::class, 'citiesByState'])->name('places.cities-by-state');
-        Route::resource('packages', TourPackageController::class)->except(['show']);
+        Route::resource('packages', TourPackageController::class);
+        Route::resource('inclusions', PackageInclusionController::class)->except(['show']);
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
     });
 });

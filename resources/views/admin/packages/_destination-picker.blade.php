@@ -24,10 +24,10 @@
 
 <div class="border border-slate-200 rounded-xl p-4 sm:p-5 bg-white" id="package-destination-picker">
     <h4 class="text-sm font-semibold text-slate-700 mb-1">Destinations</h4>
-    <p class="text-xs text-slate-500 mb-4">Select one or more countries, then their states, then cities, then places. Each level only shows items belonging to the level above.</p>
+    <p class="text-xs text-slate-500 mb-4">{{ ($showPlaces ?? true) ? 'Choose countries, states, cities, and places. Select multiple checkboxes at each level; each level shows options from your previous selection.' : 'Choose countries, states, and cities. Select multiple checkboxes at each level; each level shows options from your previous selection.' }}</p>
 
     <div class="border-t border-slate-100 pt-3">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Countries (multi-select)</p>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Countries <span class="font-normal normal-case tracking-normal">(select one or more)</span></p>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             @foreach($countries as $country)
                 <label class="flex items-center gap-2.5 text-sm text-slate-600 cursor-pointer hover:bg-slate-50 rounded-lg px-2 py-1.5">
@@ -39,34 +39,45 @@
     </div>
 
     <div class="border-t border-slate-100 pt-4 mt-4">
-        <label for="package-states" class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">States (from selected countries, multi-select)</label>
-        <select id="package-states" name="destinations[state][]" multiple size="6" data-destination-level="state" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" disabled>
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">States <span class="font-normal normal-case tracking-normal">(select one or more)</span></p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2" data-destination-level="state">
             @foreach($states as $state)
-                <option value="{{ $state->id }}" data-country-id="{{ $state->country_id }}" {{ in_array($state->id, $savedDestinations['state']) ? 'selected' : '' }}>{{ $state->name }} ({{ $state->country->name ?? '' }})</option>
+                <label class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 cursor-pointer transition hover:border-indigo-300 hover:bg-indigo-50/50" data-country-id="{{ $state->country_id }}">
+                    <input type="checkbox" name="destinations[state][]" value="{{ $state->id }}" {{ in_array($state->id, $savedDestinations['state']) ? 'checked' : '' }} class="package-state rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                    <span class="min-w-0 truncate">{{ $state->name }} <span class="text-xs text-slate-400">{{ $state->country->name ?? '' }}</span></span>
+                </label>
             @endforeach
-        </select>
-        <p class="text-xs text-slate-400 mt-1">Tick a country above first — only its states appear here.</p>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Select a country above to show its states.</p>
     </div>
 
     <div class="border-t border-slate-100 pt-4 mt-4">
-        <label for="package-cities" class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Cities (from selected states, multi-select)</label>
-        <select id="package-cities" name="destinations[city][]" multiple size="6" data-destination-level="city" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" disabled>
+        <p class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Cities <span class="font-normal normal-case tracking-normal">(select one or more)</span></p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2" data-destination-level="city">
             @foreach($cities as $city)
-                <option value="{{ $city->id }}" data-state-id="{{ $city->state_id }}" {{ in_array($city->id, $savedDestinations['city']) ? 'selected' : '' }}>{{ $city->name }} ({{ $city->state->name ?? '' }})</option>
+                <label class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 cursor-pointer transition hover:border-indigo-300 hover:bg-indigo-50/50" data-state-id="{{ $city->state_id }}">
+                    <input type="checkbox" name="destinations[city][]" value="{{ $city->id }}" {{ in_array($city->id, $savedDestinations['city']) ? 'checked' : '' }} class="package-city rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                    <span class="min-w-0 truncate">{{ $city->name }} <span class="text-xs text-slate-400">{{ $city->state->name ?? '' }}</span></span>
+                </label>
             @endforeach
-        </select>
-        <p class="text-xs text-slate-400 mt-1">Select one or more states above — only their cities appear here.</p>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Select states above to show their cities.</p>
     </div>
 
-    <div class="border-t border-slate-100 pt-4 mt-4">
-        <label for="package-places" class="block text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Places (from selected cities, multi-select)</label>
-        <select id="package-places" name="destinations[place][]" multiple size="6" data-destination-level="place" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" disabled>
-            @foreach($places as $place)
-                <option value="{{ $place->id }}" data-city-id="{{ $place->city_id }}" {{ in_array($place->id, $savedDestinations['place']) ? 'selected' : '' }}>{{ $place->name }} ({{ $place->city->name ?? '' }})</option>
-            @endforeach
-        </select>
-        <p class="text-xs text-slate-400 mt-1">Select one or more cities above — only their places appear here.</p>
-    </div>
+    @if($showPlaces ?? true)
+        <div class="border-t border-slate-100 pt-4 mt-4">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Places <span class="font-normal normal-case tracking-normal">(select one or more)</span></p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2" data-destination-level="place">
+                @foreach($places as $place)
+                    <label class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-700 cursor-pointer transition hover:border-indigo-300 hover:bg-indigo-50/50" data-city-id="{{ $place->city_id }}">
+                        <input type="checkbox" name="destinations[place][]" value="{{ $place->id }}" {{ in_array($place->id, $savedDestinations['place']) ? 'checked' : '' }} class="package-place rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span class="min-w-0 truncate">{{ $place->name }} <span class="text-xs text-slate-400">{{ $place->city->name ?? '' }}</span></span>
+                    </label>
+                @endforeach
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Select cities above to show their places.</p>
+        </div>
+    @endif
 </div>
 
 @push('scripts')
@@ -78,54 +89,56 @@
     }
 
     var countryBoxes = Array.from(picker.querySelectorAll('.package-country'));
-    var stateSelect = picker.querySelector('[data-destination-level="state"]');
-    var citySelect = picker.querySelector('[data-destination-level="city"]');
-    var placeSelect = picker.querySelector('[data-destination-level="place"]');
+    var stateBoxes = Array.from(picker.querySelectorAll('.package-state'));
+    var cityBoxes = Array.from(picker.querySelectorAll('.package-city'));
+    var placeBoxes = Array.from(picker.querySelectorAll('.package-place'));
 
-    function selectedValues(select) {
-        return Array.from(select.selectedOptions).map(function (option) {
-            return option.value;
+    function selectedCheckboxValues(checkboxes) {
+        return checkboxes.filter(function (checkbox) {
+            return checkbox.checked;
+        }).map(function (checkbox) {
+            return checkbox.value;
         });
     }
 
-    function filterOptions(select, allowedValues, datasetKey) {
-        Array.from(select.options).forEach(function (option) {
-            var isAllowed = allowedValues.has(option.dataset[datasetKey] || '');
-            option.hidden = !isAllowed;
-            option.disabled = !isAllowed;
+    function filterCheckboxes(checkboxes, allowedValues, datasetKey) {
+        checkboxes.forEach(function (checkbox) {
+            var label = checkbox.closest('label');
+            var isAllowed = allowedValues.has(label.dataset[datasetKey] || '');
+            label.hidden = !isAllowed;
+            checkbox.disabled = !isAllowed;
             if (!isAllowed) {
-                option.selected = false;
+                checkbox.checked = false;
             }
         });
-        select.disabled = allowedValues.size === 0;
     }
 
     function refreshPlaces() {
-        var selectedCities = new Set(selectedValues(citySelect));
-        filterOptions(placeSelect, selectedCities, 'cityId');
+        var selectedCities = new Set(selectedCheckboxValues(cityBoxes));
+        filterCheckboxes(placeBoxes, selectedCities, 'cityId');
     }
 
     function refreshCities() {
-        var selectedStates = new Set(selectedValues(stateSelect));
-        filterOptions(citySelect, selectedStates, 'stateId');
+        var selectedStates = new Set(selectedCheckboxValues(stateBoxes));
+        filterCheckboxes(cityBoxes, selectedStates, 'stateId');
         refreshPlaces();
     }
 
     function refreshStates() {
-        var selectedCountries = new Set(countryBoxes.filter(function (box) {
-            return box.checked;
-        }).map(function (box) {
-            return box.value;
-        }));
-        filterOptions(stateSelect, selectedCountries, 'countryId');
+        var selectedCountries = new Set(selectedCheckboxValues(countryBoxes));
+        filterCheckboxes(stateBoxes, selectedCountries, 'countryId');
         refreshCities();
     }
 
     countryBoxes.forEach(function (box) {
         box.addEventListener('change', refreshStates);
     });
-    stateSelect.addEventListener('change', refreshCities);
-    citySelect.addEventListener('change', refreshPlaces);
+    stateBoxes.forEach(function (box) {
+        box.addEventListener('change', refreshCities);
+    });
+    cityBoxes.forEach(function (box) {
+        box.addEventListener('change', refreshPlaces);
+    });
 
     refreshStates();
 })();

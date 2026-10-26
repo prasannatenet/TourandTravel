@@ -7,8 +7,7 @@
 <div class="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">{{ session('success') }}</div>
 @endif
 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-<p class="text-sm text-slate-500">{{ $places->total() }} places</p>
-<a href="{{ route('admin.places.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg">+ Add Place</a>
+<p class="text-sm text-slate-500">{{ $cityPlaceCountsTotal }} city{{ $cityPlaceCountsTotal != 1 ? 's' : '' }} in destination</p>
 </div>
 <form method="GET" action="{{ route('admin.places.index') }}" id="placeFilterForm" class="bg-white rounded-2xl shadow-sm p-4 mb-4">
 <div class="flex flex-wrap items-end gap-3">
@@ -55,41 +54,31 @@
 </form>
 <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
 <div class="overflow-x-auto">
-<table class="w-full text-sm min-w-[900px]">
+<table class="w-full text-sm min-w-[1000px]">
 <thead class="bg-slate-50 text-xs uppercase text-slate-500">
 <tr>
-<th class="text-left px-4 py-3">Image</th>
-<th class="text-left px-4 py-3">Place</th>
-<th class="text-left px-4 py-3">Country</th>
-<th class="text-left px-4 py-3">State</th>
 <th class="text-left px-4 py-3">City</th>
-<th class="text-left px-4 py-3">Duration</th>
-<th class="text-left px-4 py-3">Best Time</th>
-<th class="text-left px-4 py-3">Price / Person</th>
+<th class="text-left px-4 py-3">State</th>
+<th class="text-left px-4 py-3">Country</th>
+<th class="text-left px-4 py-3">Places in City</th>
 <th class="text-left px-4 py-3">Actions</th>
 </tr>
 </thead>
 <tbody class="divide-y">
-@forelse ($places as $p)
+@forelse ($groupedByCity as $cityId => $data)
 <tr class="hover:bg-slate-50">
-<td class="px-4 py-2"><img src="{{ $p->primaryImageUrl() }}" class="h-12 w-16 rounded-lg object-cover"></td>
-<td class="px-4 py-2 font-semibold">{{ $p->name }}</td>
-<td class="px-4 py-2">{{ $p->city->state->country->name }}</td>
-<td class="px-4 py-2">{{ $p->city->state->name }}</td>
-<td class="px-4 py-2">{{ $p->city->name }}</td>
-<td class="px-4 py-2 whitespace-nowrap">{{ $p->visit_duration_hours }} hrs</td>
-<td class="px-4 py-2 capitalize"><span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full">{{ $p->best_time_to_visit }}</span></td>
-<td class="px-4 py-2 whitespace-nowrap">Rs.{{ number_format($p->price_per_person) }}</td>
-<td class="px-4 py-2">
-<div class="flex gap-1.5">
-<a href="{{ route('admin.places.show', $p) }}" class="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">View</a>
-<a href="{{ route('admin.places.edit', $p) }}" class="px-3 py-1 bg-slate-900 text-white text-xs rounded-lg">Edit</a>
-<form method="POST" action="{{ route('admin.places.destroy', $p) }}" onsubmit="return confirm('Delete place?')">@csrf @method('DELETE')<button class="px-3 py-1 bg-red-50 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-100">Delete</button></form>
-</div>
-</td>
+    <td class="px-4 py-2">{{ $data['city']->name }}</td>
+    <td class="px-4 py-2">{{ $data['state']->name }}</td>
+    <td class="px-4 py-2">{{ $data['country']->name }}</td>
+    <td class="px-4 py-2 whitespace-nowrap"><span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-semibold">{{ $data['count'] }} place{{ $data['count'] != 1 ? 's' : '' }}</span></td>
+    <td class="px-4 py-2">
+        <div class="flex gap-1.5">
+            <a href="{{ route('admin.places.city.index', $data['city']) }}" class="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">View All</a>
+        </div>
+    </td>
 </tr>
 @empty
-<tr><td colspan="9" class="px-4 py-8 text-center text-slate-500">No places yet. <a class="text-blue-600 font-semibold" href="{{ route('admin.places.create') }}">Add one</a>.</td></tr>
+<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No places yet. <a class="text-blue-600 font-semibold" href="{{ route('admin.places.create') }}">Add one</a>.</td></tr>
 @endforelse
 </tbody>
 </table>

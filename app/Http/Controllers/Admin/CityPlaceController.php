@@ -64,7 +64,42 @@ class CityPlaceController extends Controller
 
         $hasFilters = $search || $countryId || $stateId || $cityId || $bestTime;
 
-        return view('admin.destinations.places.index', compact('places', 'countries', 'states', 'cities', 'search', 'countryId', 'stateId', 'cityId', 'bestTime', 'hasFilters'));
+        // Count of places per city for the sidebar summary column.
+        $cityPlaceCounts = CityPlace::select('city_id', \DB::raw('count(*) as total'))
+            ->groupBy('city_id')
+            ->pluck('total', 'city_id')
+            ->toArray();
+
+        // Group places by city so each city is shown only once with its total count.
+        $groupedByCity = [];
+        foreach ($places as $place) {
+            $cityId = $place->city_id;
+            if (! isset($groupedByCity[$cityId])) {
+                $groupedByCity[$cityId] = [
+                    'city' => $place->city,
+                    'state' => $place->city->state,
+                    'country' => $place->city->state->country,
+                    'count' => 0,
+                ];
+            }
+            $groupedByCity[$cityId]['count']++;
+        }
+
+        // Total number of cities that have at least one place.
+        $cityPlaceCountsTotal = CityPlace::select('city_id')->distinct()->count('city_id');
+
+        return view('admin.destinations.places.index', compact('places', 'countries', 'states', 'cities', 'search', 'countryId', 'stateId', 'cityId', 'bestTime', 'hasFilters', 'cityPlaceCounts', 'groupedByCity', 'cityPlaceCountsTotal'));
+    }
+
+    public function cityPlaces(City $city): View
+    {
+        $places = $city->places()
+            ->with(['city.state.country'])
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.destinations.places.city.index', compact('city', 'places'));
     }
 
     public function show(CityPlace $place): View
@@ -88,11 +123,13 @@ class CityPlaceController extends Controller
         );
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         $countries = Country::orderBy('name')->get();
+        $city = City::with(['state.country'])->find($request->query('city_id'));
+        $returnToCityId = $city?->id;
 
-        return view('admin.destinations.places.create', compact('countries'));
+        return view('admin.destinations.places.create', compact('countries', 'city', 'returnToCityId'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -101,6 +138,7 @@ class CityPlaceController extends Controller
             'country_id' => ['required', 'exists:countries,id'],
             'state_id' => ['required', 'exists:states,id'],
             'city_id' => ['required', 'exists:cities,id'],
+            'return_to_city_id' => ['nullable', 'integer', 'exists:cities,id'],
             'name' => ['required', 'string', 'max:150'],
             'place_description' => ['required', 'string', 'max:500'],
             'description' => ['required', 'string'],
@@ -119,7 +157,8 @@ class CityPlaceController extends Controller
             return back()->withErrors(['city_id' => $chainError])->withInput();
         }
 
-        unset($validated['country_id'], $validated['state_id']);
+        $returnToCityId = $validated['return_to_city_id'] ?? null;
+        unset($validated['country_id'], $validated['state_id'], $validated['return_to_city_id']);
 
         if (CityPlace::where('city_id', $validated['city_id'])->where('name', $validated['name'])->exists()) {
             return back()->withErrors(['name' => 'This place already exists in the selected city.'])->withInput();
@@ -135,6 +174,11 @@ class CityPlaceController extends Controller
         $validated['secondary_images'] = $secondary;
 
         CityPlace::create($validated);
+
+        if ($returnToCityId !== null && (int) $returnToCityId === (int) $validated['city_id']) {
+            return redirect()->route('admin.places.city.index', ['city' => $returnToCityId])
+                ->with('success', 'Place created successfully.');
+        }
 
         return redirect()->route('admin.places.index')->with('success', 'Place created successfully.');
     }

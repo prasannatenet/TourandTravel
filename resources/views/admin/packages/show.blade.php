@@ -1,65 +1,156 @@
 @extends('layouts.admin')
 @section('title', $package->name)
 @section('header', $package->name)
-@section('subheader', 'View and manage package details.')
+@section('subheader', 'Complete package details, inclusions, destinations, and day plan.')
 
 @section('content')
-<div class="overflow-hidden bg-white shadow rounded-2xl">
-    <div class="px-6 py-4 border-b border-slate-200">
-        <div class="flex items-center justify-between">
-            <div>
-                <h2 class="text-lg font-bold text-slate-800">{{ $package->name }}</h2>
-                <p class="text-xs text-slate-500 mt-0.5">Package details and destinations.</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold {{ $package->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
-                    {{ $package->is_active ? 'Active' : 'Draft' }}
-                </span>
-                <a href="{{ route('admin.packages.edit', $package) }}" class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-indigo-600 hover:bg-indigo-50">Edit</a>
-            </div>
+<div class="mx-auto max-w-6xl space-y-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <a href="{{ route('admin.packages.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50"><i class="fa-solid fa-arrow-left text-xs"></i> Back to packages</a>
+        <div class="flex items-center gap-2">
+            <span class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold {{ $package->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $package->is_active ? 'Active' : 'Draft' }}</span>
+            <a href="{{ route('admin.packages.edit', $package) }}" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"><i class="fa-regular fa-pen-to-square text-xs"></i> Edit package</a>
         </div>
     </div>
 
-    <div class="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-            <div class="rounded-xl bg-slate-50 p-4">
-                <dl class="space-y-2 text-sm">
-                    <div class="flex justify-between"><dt class="text-slate-500">Departure city</dt><dd class="text-slate-800 font-medium">{{ $package->departure_city ?? 'N/A' }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Base price</dt><dd class="text-slate-800 font-medium">Rs.{{ number_format($package->base_price) }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Days / Nights</dt><dd class="text-slate-800 font-medium">{{ $package->days }} / {{ $package->nights }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Views</dt><dd class="text-slate-800 font-medium">{{ $package->views }}</dd></div>
-                    <div class="flex justify-between"><dt class="text-slate-500">Created</dt><dd class="text-slate-800 font-medium">{{ $package->created_at->format('Y-m-d H:i') ?? 'N/A' }}</dd></div>
-                </dl>
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        @if($package->image)
+            <img src="{{ asset('storage/'.$package->image) }}" alt="{{ $package->name }}" class="h-56 w-full object-cover sm:h-72">
+        @endif
+        @if($package->galleryImages->isNotEmpty())
+            <div class="grid grid-cols-2 gap-2 p-3 sm:grid-cols-4">
+                @foreach($package->galleryImages as $galleryImage)
+                    <img src="{{ asset('storage/'.$galleryImage->image) }}" alt="{{ $package->name }} gallery photo" class="h-28 w-full rounded-lg object-cover sm:h-36">
+                @endforeach
             </div>
-            @if($package->description)
-            <div class="mt-3 rounded-xl bg-white border border-slate-200 p-4">
-                <h4 class="text-xs font-semibold uppercase text-slate-400 mb-1">Description</h4>
-                <p class="text-sm text-slate-600">{{ $package->description }}</p>
-            </div>
-            @endif
-        </div>
-
-        <div>
-            <div class="rounded-xl bg-slate-50 p-4">
-                <h4 class="text-xs font-semibold uppercase text-slate-400 mb-3">Destinations ({{ $package->destinations->count() }})</h4>
-                <div class="space-y-2">
-                    @forelse($package->destinations as $pd)
-                    <div class="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200">
-                        <span class="text-sm font-medium text-slate-700">{{ $pd->destination ? $pd->destination->name : $pd->destination_id }}</span>
-                        <span class="text-xs text-slate-400">{{ strtolower(class_basename($pd->destination_type)) }}</span>
+        @endif
+        <div class="p-5 sm:p-7">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Tour package</p>
+                    <h2 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">{{ $package->name }}</h2>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @if($package->category)<span class="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">{{ $package->category }}</span>@endif
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize text-slate-700">{{ $package->tour_type }} tour</span>
                     </div>
-                    @empty
-                    <p class="text-sm text-slate-400">No destinations selected.</p>
-                    @endforelse
+                    @if($package->description)
+                        <p class="mt-3 max-w-3xl whitespace-pre-line text-sm leading-6 text-slate-600">{{ $package->description }}</p>
+                    @endif
                 </div>
             </div>
+            <dl class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div class="rounded-xl bg-slate-50 p-4"><dt class="text-xs text-slate-500">Departure city</dt><dd class="mt-1 font-semibold text-slate-800">{{ $package->departure_city ?: 'Not specified' }}</dd></div>
+                <div class="rounded-xl bg-slate-50 p-4"><dt class="text-xs text-slate-500">Adult price / person</dt><dd class="mt-1 font-semibold text-slate-800">₹{{ number_format((float) $package->base_price, 2) }}</dd>@if($package->child_price !== null)<dd class="mt-1 text-xs text-slate-600">Child: ₹{{ number_format((float) $package->child_price, 2) }}</dd>@endif @if($package->infant_price !== null)<dd class="mt-1 text-xs text-slate-600">Infant: ₹{{ number_format((float) $package->infant_price, 2) }}</dd>@endif</div>
+                <div class="rounded-xl bg-slate-50 p-4"><dt class="text-xs text-slate-500">Duration</dt><dd class="mt-1 font-semibold text-slate-800">{{ $package->days }} days / {{ $package->nights }} nights</dd></div>
+                <div class="rounded-xl bg-indigo-50 p-4"><dt class="text-xs text-indigo-600">Estimated adult total / person</dt><dd class="mt-1 font-bold text-indigo-800">₹{{ number_format($estimatedTotal, 2) }}</dd><dd class="mt-1 text-xs text-indigo-600">{{ $package->discount_percentage }}% discount · {{ $package->tax_percentage }}% tax</dd></div>
+            </dl>
         </div>
-    </div>
+    </section>
 
-    @if($package->image)
-    <div class="px-6 pb-6">
-        <img src="{{ asset('storage/' . $package->image) }}" alt="{{ $package->name }}" class="max-h-48 rounded-xl border border-slate-200 object-cover">
-    </div>
-    @endif
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        <div class="mb-4"><h3 class="text-base font-bold text-slate-900">Departure dates and seat limits</h3><p class="mt-1 text-sm text-slate-500">Configured departure capacity and date-specific adult prices.</p></div>
+        @if($package->availabilities->isEmpty())
+            <p class="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">No departure dates configured.</p>
+        @else
+            <div class="overflow-x-auto"><table class="w-full min-w-[36rem] text-left text-sm"><thead><tr class="border-b border-slate-200 text-xs uppercase text-slate-500"><th class="px-3 py-2">Departure date</th><th class="px-3 py-2">Seat capacity</th><th class="px-3 py-2">Adult price / person</th></tr></thead><tbody>
+                @foreach($package->availabilities as $departure)
+                    <tr class="border-b border-slate-100"><td class="px-3 py-3 font-medium text-slate-800">{{ $departure->departure_date->format('d M Y') }}</td><td class="px-3 py-3 text-slate-700">{{ number_format($departure->seat_limit) }} seats</td><td class="px-3 py-3 text-slate-700">₹{{ number_format((float) ($departure->adult_price_override ?? $package->base_price), 2) }}{{ $departure->adult_price_override !== null ? ' (date price)' : ' (standard)' }}</td></tr>
+                @endforeach
+            </tbody></table></div>
+        @endif
+    </section>
+
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <div><h3 class="text-base font-bold text-slate-900">Package inclusions</h3><p class="mt-1 text-sm text-slate-500">Package-specific meals, vehicles, and services.</p></div>
+            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{{ $package->inclusions->sum(fn ($inclusion) => $inclusion->pivot->quantity) }} included</span>
+        </div>
+        @if($package->inclusions->isEmpty())
+            <p class="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">No inclusions selected.</p>
+        @else
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                @foreach($package->inclusions as $inclusion)
+                    <article class="rounded-xl border border-slate-200 p-4">
+                        <div class="flex items-start gap-3">
+                            @if($inclusionDetails[$inclusion->id]['image_one'] || $inclusionDetails[$inclusion->id]['image_two'])
+                                <div class="flex shrink-0 gap-1.5">
+                                    @foreach([$inclusionDetails[$inclusion->id]['image_one'], $inclusionDetails[$inclusion->id]['image_two']] as $imagePath)
+                                        @if($imagePath)<img src="{{ asset('storage/'.$imagePath) }}" alt="{{ $inclusionDetails[$inclusion->id]['name'] }}" class="h-14 w-20 rounded-lg object-cover">@endif
+                                    @endforeach
+                                </div>
+                            @endif
+                            <div class="min-w-0">
+                                <h4 class="font-semibold text-slate-800">{{ $inclusionDetails[$inclusion->id]['name'] }}</h4>
+                                <p class="mt-1 text-xs text-slate-500">Quantity: {{ $inclusion->pivot->quantity }}</p>
+                                @if($inclusionDetails[$inclusion->id]['duration_hours'])
+                                    <p class="mt-1 text-xs text-indigo-600"><i class="fa-regular fa-hourglass-half mr-1"></i>{{ $inclusionDetails[$inclusion->id]['duration_hours'] }} {{ (float) $inclusionDetails[$inclusion->id]['duration_hours'] === 1.0 ? 'hour' : 'hours' }}</p>
+                                @endif
+                            </div>
+                        </div>
+                        @if($inclusionDetails[$inclusion->id]['place_from'] || $inclusionDetails[$inclusion->id]['place_to'])
+                            <p class="mt-3 text-xs text-slate-500">{{ $inclusionDetails[$inclusion->id]['place_from'] ?: 'Any location' }}{{ $inclusionDetails[$inclusion->id]['place_to'] ? ' → '.$inclusionDetails[$inclusion->id]['place_to'] : '' }}</p>
+                        @endif
+                        @if($inclusionDetails[$inclusion->id]['description'])
+                            <p class="mt-2 whitespace-pre-line text-sm leading-5 text-slate-600">{{ $inclusionDetails[$inclusion->id]['description'] }}</p>
+                        @endif
+                    </article>
+                @endforeach
+            </div>
+        @endif
+    </section>
+
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <div><h3 class="text-base font-bold text-slate-900">Destinations</h3><p class="mt-1 text-sm text-slate-500">Countries, states, and cities selected for this package.</p></div>
+            <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{{ $package->destinations->count() }} selected</span>
+        </div>
+        @if($package->destinations->isEmpty())
+            <p class="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">No destinations selected.</p>
+        @else
+            <div class="flex flex-wrap gap-2">
+                @foreach($package->destinations as $destination)
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-sm text-indigo-800"><span>{{ $destination->destination?->name ?? $destination->destination_id }}</span><span class="text-xs capitalize text-indigo-500">{{ strtolower(class_basename($destination->destination_type)) }}</span></span>
+                @endforeach
+            </div>
+        @endif
+    </section>
+
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        <div class="mb-4"><h3 class="text-base font-bold text-slate-900">Day-by-day plan</h3><p class="mt-1 text-sm text-slate-500">Scheduled visits and inclusions for each day.</p></div>
+        @if($package->planItems->isEmpty())
+            <p class="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">No plan items added.</p>
+        @else
+            <div class="space-y-5">
+                @foreach($package->planItems->groupBy('day_number') as $dayNumber => $items)
+                    <div class="rounded-xl border border-slate-200 p-4">
+                        <h4 class="mb-3 text-sm font-bold text-slate-800">Day {{ $dayNumber }}</h4>
+                        <div class="space-y-3">
+                            @foreach($items as $item)
+                                @if($item->package_inclusion_id)
+                                    <article class="flex gap-3 rounded-lg bg-emerald-50/60 p-3">
+                                        <span class="w-16 shrink-0 pt-0.5 text-xs font-semibold text-emerald-700">{{ substr((string) $item->start_time, 0, 5) }}</span>
+                                        <div class="min-w-0">
+                                            <h5 class="text-sm font-semibold text-slate-800">{{ $inclusionDetails[$item->package_inclusion_id]['name'] ?? $item->packageInclusion?->name ?? 'Package inclusion' }}</h5>
+                                            @if(isset($inclusionDetails[$item->package_inclusion_id]) && ($inclusionDetails[$item->package_inclusion_id]['place_from'] || $inclusionDetails[$item->package_inclusion_id]['place_to']))<p class="mt-1 text-xs text-slate-500">{{ $inclusionDetails[$item->package_inclusion_id]['place_from'] ?: 'Any location' }}{{ $inclusionDetails[$item->package_inclusion_id]['place_to'] ? ' → '.$inclusionDetails[$item->package_inclusion_id]['place_to'] : '' }}</p>@endif
+                                            @if(!empty($inclusionDetails[$item->package_inclusion_id]['duration_hours']))<p class="mt-1 text-xs text-indigo-600">Duration: {{ $inclusionDetails[$item->package_inclusion_id]['duration_hours'] }} {{ (float) $inclusionDetails[$item->package_inclusion_id]['duration_hours'] === 1.0 ? 'hour' : 'hours' }}</p>@endif
+                                        </div>
+                                    </article>
+                                @else
+                                    <article class="flex gap-3 rounded-lg bg-slate-50 p-3">
+                                        <span class="w-16 shrink-0 pt-0.5 text-xs font-semibold text-indigo-700">{{ substr((string) $item->start_time, 0, 5) }}</span>
+                                        <div class="min-w-0 flex-1">
+                                            <h5 class="text-sm font-semibold text-slate-800">{{ $item->place?->name ?? 'Place stop' }}</h5>
+                                            @if($item->place?->city)<p class="mt-1 text-xs text-slate-500">{{ $item->place->city->name }}</p>@endif
+                                            @if((float) $item->additional_price > 0)<p class="mt-1 text-xs text-slate-500">Extra cost: ₹{{ number_format((float) $item->additional_price, 2) }}</p>@endif
+                                        </div>
+                                    </article>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </section>
 </div>
 @endsection

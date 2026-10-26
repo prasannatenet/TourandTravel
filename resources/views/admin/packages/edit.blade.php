@@ -29,13 +29,8 @@
                 @error('departure_city') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Base Price (USD) *</label>
-                <input type="number" name="base_price" value="{{ old('base_price', $package->base_price) }}" step="1.00" min="0" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                @error('base_price') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Days *</label>
-                <input type="number" name="days" value="{{ old('days', $package->days) }}" min="1" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <input id="package-days" type="number" name="days" value="{{ old('days', $package->days) }}" min="1" max="99" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 @error('days') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
             <div>
@@ -52,6 +47,10 @@
             </div>
         </div>
 
+        <div class="space-y-5">
+            @include('admin.packages._commercial-settings', ['package' => $package])
+        </div>
+
         <div class="border-t border-slate-200 pt-4">
             <label class="block text-sm font-medium text-slate-700 mb-1">Description (optional)</label>
             <textarea name="description" rows="3" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Short description of the package...">{{ old('description', $package->description) }}</textarea>
@@ -59,13 +58,38 @@
         </div>
 
         <div class="border-t border-slate-200 pt-4">
-            <h4 class="text-sm font-semibold text-slate-700 mb-3">Package Image (optional)</h4>
+            <h4 class="text-sm font-semibold text-slate-700 mb-3">Package images (optional)</h4>
             @if($package->image)
             <div class="mb-3 text-sm text-slate-500">
-                Current image: <a href="{{ asset('storage/' . $package->image) }}" target="_blank" class="text-indigo-600 underline">{{ basename($package->image) }}</a>
+                <p class="mb-2 font-medium text-slate-700">Current cover</p>
+                <img src="{{ asset('storage/'.$package->image) }}" alt="{{ $package->name }} cover" class="mb-2 h-28 w-48 rounded-lg object-cover">
             </div>
             @endif
-            <input type="file" name="image" class="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200">
+            <label class="mb-1.5 block text-sm font-medium text-slate-700">Replace cover photo</label>
+            <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200">
+            @error('image')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+
+            <div class="mt-5">
+                <p class="mb-2 text-sm font-semibold text-slate-700">Gallery</p>
+                @if($package->galleryImages->isNotEmpty())
+                    <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        @foreach($package->galleryImages as $galleryImage)
+                            <label class="rounded-lg border border-slate-200 p-2">
+                                <img src="{{ asset('storage/'.$galleryImage->image) }}" alt="Package gallery photo" class="h-24 w-full rounded object-cover">
+                                <span class="mt-2 flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" name="remove_gallery_images[]" value="{{ $galleryImage->id }}" class="rounded border-slate-300 text-red-600"> Remove photo</span>
+                            </label>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="mb-3 text-xs text-slate-500">No gallery photos added.</p>
+                @endif
+                <label for="package-gallery-files" class="mb-1.5 block text-sm font-medium text-slate-700">Add gallery photos (up to 8 total, 4 MB each)</label>
+                <input id="package-gallery-files" type="file" name="gallery_images[]" multiple accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="block w-full text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700">
+                @error('gallery_images')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                @foreach($errors->getMessages() as $field => $messages)
+                    @if(str_starts_with($field, 'gallery_images.'))<p class="mt-1 text-xs text-red-600">{{ $messages[0] }}</p>@endif
+                @endforeach
+            </div>
         </div>
 
         <div class="border-t border-slate-200 pt-4">
@@ -75,8 +99,16 @@
                 'cities' => $cities,
                 'places' => $places,
                 'package' => $package,
+                'showPlaces' => false,
             ])
         </div>
+
+        @include('admin.packages._plan-manager', [
+            'places' => $places,
+            'inclusions' => $inclusions,
+            'inclusionItems' => $inclusionItems,
+            'planItems' => $planItems,
+        ])
 
         <div class="flex justify-end gap-3 border-t border-slate-200 pt-4">
             <a href="{{ route('admin.packages.index') }}" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200">Cancel</a>
