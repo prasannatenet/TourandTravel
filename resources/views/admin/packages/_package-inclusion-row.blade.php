@@ -13,30 +13,17 @@
     $imageTwo = $customImageTwo ?: $selectedInclusion?->image_two;
 @endphp
 
-<article class="rounded-xl border border-slate-200 bg-white p-4" data-package-inclusion-row data-inclusion-key="{{ $inclusionKey }}">
+<div class="mt-4 border-t border-slate-100 pt-4" data-package-inclusion-row data-inclusion-key="{{ $inclusionKey }}">
     @if(!empty($packageInclusionRow['id']))
         <input type="hidden" name="inclusions[{{ $inclusionKey }}][id]" value="{{ $packageInclusionRow['id'] }}">
     @endif
     <div class="mb-3 flex items-center justify-between gap-3">
-        <h5 class="text-sm font-semibold text-slate-800">Inclusion <span data-inclusion-row-number>{{ $rowNumber }}</span></h5>
-        <div class="flex items-center gap-2">
-            <button type="button" data-add-inclusion-to-plan="{{ $inclusionKey }}" title="Adds this entry after the latest scheduled item. You can change its day and time in the plan row." class="rounded-lg border border-emerald-200 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50">Add to plan</button>
-            <button type="button" data-remove-package-inclusion class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-red-50 hover:text-red-600">Remove</button>
-        </div>
+        <h5 class="text-sm font-semibold text-slate-800">Service details</h5>
+        <p class="text-[11px] text-slate-500">These details apply only to this itinerary entry.</p>
     </div>
-    <p data-inclusion-schedule-status class="mb-3 text-[11px] font-medium text-amber-700">Not scheduled; hours are not assigned to a day.</p>
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div class="sm:col-span-2">
-            <label for="package-inclusion-catalog-{{ $inclusionKey }}" class="mb-1 block text-xs font-medium text-slate-600">Catalog item <span class="text-red-500">*</span></label>
-            <select id="package-inclusion-catalog-{{ $inclusionKey }}" name="inclusions[{{ $inclusionKey }}][package_inclusion_id]" required data-inclusion-catalog class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10">
-                <option value="">Choose an inclusion</option>
-                @foreach($inclusions as $inclusion)
-                    <option value="{{ $inclusion->id }}" data-default-name="{{ $inclusion->name }}" data-default-scheduled-time="{{ $inclusion->scheduled_time ? substr((string) $inclusion->scheduled_time, 0, 5) : '' }}" data-default-place-from="{{ $inclusion->place_from }}" data-default-place-to="{{ $inclusion->place_to }}" data-default-description="{{ $inclusion->description }}" data-default-image-one="{{ $inclusion->image_one }}" data-default-image-two="{{ $inclusion->image_two }}" @selected((string) ($packageInclusionRow['package_inclusion_id'] ?? '') === (string) $inclusion->id)>{{ $inclusion->name }}</option>
-                @endforeach
-            </select>
-            @error('inclusions.'.$inclusionKey.'.package_inclusion_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-        </div>
+        <input type="hidden" name="inclusions[{{ $inclusionKey }}][package_inclusion_id]" value="{{ $packageInclusionRow['package_inclusion_id'] ?? '' }}" data-inclusion-catalog-id>
 
         <div>
             <label class="mb-1 block text-xs font-medium text-slate-600">Package display name <span class="text-red-500">*</span></label>
@@ -61,8 +48,9 @@
             <input type="text" name="inclusions[{{ $inclusionKey }}][custom_place_to]" value="{{ $displayPlaceTo }}" maxlength="150" data-inclusion-field="custom_place_to" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10">
         </div>
         <div class="sm:col-span-2">
-            <label class="mb-1 block text-xs font-medium text-slate-600">Description</label>
+            <label class="mb-1 block text-xs font-medium text-slate-600">Description for this package entry</label>
             <textarea name="inclusions[{{ $inclusionKey }}][custom_description]" rows="2" data-inclusion-field="custom_description" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10">{{ $displayDescription }}</textarea>
+            <p class="mt-1 text-[11px] text-slate-400">Each entry has its own description. Add the same service again for another day to give it different details.</p>
         </div>
         @foreach(['custom_image_one' => ['Image 1', $imageOne], 'custom_image_two' => ['Image 2', $imageTwo]] as $field => [$label, $image])
             <div class="rounded-lg border border-slate-200 p-3">
@@ -78,8 +66,13 @@
                         @endif
                     </div>
                 @endif
-                <input type="file" name="inclusions[{{ $inclusionKey }}][{{ $field }}]" accept="image/jpeg,image/png,image/webp" class="block w-full text-xs text-slate-500 file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs file:font-medium file:text-slate-700">
+                <input type="file" name="inclusions[{{ $inclusionKey }}][{{ $field }}]" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" data-inclusion-image-input class="block w-full text-xs text-slate-500 file:mr-2 file:rounded-md file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs file:font-medium file:text-slate-700">
+                <p class="mt-1 text-[11px] text-slate-500" data-inclusion-image-name>No new image selected.</p>
+                <p id="inclusion-image-help-{{ $inclusionKey }}-{{ $field }}" class="mt-1 text-[11px] text-slate-400">Optional package-specific override. JPG, PNG, or WebP up to 4 MB; leave blank to keep the current image or use the catalog photo.</p>
+                @error('inclusions.'.$inclusionKey.'.'.$field)
+                    <p class="mt-1 text-xs font-medium text-red-600" role="alert">{{ $message }}</p>
+                @enderror
             </div>
         @endforeach
     </div>
-</article>
+</div>

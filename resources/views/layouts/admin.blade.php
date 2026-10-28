@@ -28,20 +28,14 @@
                 <p class="text-xs text-slate-400">Admin Panel</p>
             </div>
         </div>
-        <nav class="flex-1 px-3 py-4 space-y-1 text-sm">
+        <nav class="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-1 text-sm">
             <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
                 <i class="fa-solid fa-gauge-high w-5 text-center"></i> Dashboard
             </a>
-            <a href="{{ route('admin.packages.index') }}" class="sidebar-link {{ request()->routeIs('admin.packages.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
-                <i class="fa-solid fa-suitcase-rolling w-5 text-center"></i> Packages
-            </a>
-            <a href="{{ route('admin.inclusions.index') }}" class="sidebar-link {{ request()->routeIs('admin.inclusions.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
-                <i class="fa-solid fa-list-check w-5 text-center"></i> Package Inclusions
-            </a>
             @php($destinationOpen = request()->routeIs('admin.countries.*', 'admin.states.*', 'admin.cities.*', 'admin.places.*'))
             <div class="rounded-lg">
-                <button type="button" id="destinationToggle" aria-expanded="{{ $destinationOpen ? 'true' : 'false' }}" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
-                    <i class="fa-solid fa-location-dot w-5 text-center text-sm"></i>
+                <button type="button" id="destinationToggle" aria-expanded="{{ $destinationOpen ? 'true' : 'false' }}" class="sidebar-link {{ $destinationOpen ? 'active' : '' }} w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-location-dot w-5 text-center"></i>
                     <span>Destination</span>
                     <i id="destinationChevron" class="fa-solid fa-chevron-down ml-auto text-[10px] transition-transform {{ $destinationOpen ? 'rotate-180' : '' }}"></i>
                 </button>
@@ -52,6 +46,15 @@
                     <a href="{{ route('admin.places.index') }}" class="sidebar-sub {{ request()->routeIs('admin.places.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">4. Places</a>
                 </div>
             </div>
+            <a href="{{ route('admin.inclusions.index') }}" class="sidebar-link {{ request()->routeIs('admin.inclusions.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                <i class="fa-solid fa-list-check w-5 text-center"></i> Package Inclusions
+            </a>
+            <a href="{{ route('admin.packages.index') }}" class="sidebar-link {{ request()->routeIs('admin.packages.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                <i class="fa-solid fa-suitcase-rolling w-5 text-center"></i> Packages
+            </a>
+            <a href="{{ route('admin.hotels.index') }}" class="sidebar-link {{ request()->routeIs('admin.hotels.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                <i class="fa-solid fa-hotel w-5 text-center"></i> Hotels
+            </a>
             <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
                 <i class="fa-solid fa-map-location-dot w-5 text-center"></i> Tours
                 <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">Soon</span>
@@ -106,9 +109,11 @@
             </div>
             <!-- Mobile nav -->
             <nav class="md:hidden px-4 pb-3 flex gap-2 overflow-x-auto text-sm">
-                <a href="{{ route('admin.dashboard') }}" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg whitespace-nowrap">Dashboard</a>
-                <a href="{{ route('admin.packages.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Packages</a>
-                <a href="{{ route('admin.inclusions.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Inclusions</a>
+                <a href="{{ route('admin.dashboard') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.dashboard') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Dashboard</a>
+                <a href="{{ route('admin.destinations.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.countries.*', 'admin.states.*', 'admin.cities.*', 'admin.places.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Destination</a>
+                <a href="{{ route('admin.inclusions.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.inclusions.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Package Inclusions</a>
+                <a href="{{ route('admin.packages.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.packages.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Packages</a>
+                <a href="{{ route('admin.hotels.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.hotels.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Hotels</a>
                 <a href="{{ route('admin.countries.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Country</a>
                 <a href="{{ route('admin.states.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">State</a>
                 <a href="{{ route('admin.cities.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">City</a>

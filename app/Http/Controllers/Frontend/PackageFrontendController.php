@@ -78,6 +78,42 @@ class PackageFrontendController extends Controller
 
         $itinerary = $package->planItems->groupBy('day_number');
 
+        // Collect all city IDs that appear in place-type plan items and destinations
+        $planCityIds = $package->planItems
+            ->filter(fn ($item) => $item->city_place_id && $item->place)
+            ->map(fn ($item) => $item->place->city_id)
+            ->unique()
+            ->values();
+
+        $destCityIds = $package->destinations
+            ->map(fn ($d) => $d->destination?->city_id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $allRelevantCityIds = $planCityIds->merge($destCityIds)->unique()->values();
+
+        $placesQuery = CityPlace::with('city');
+        if ($allRelevantCityIds->isNotEmpty()) {
+            $placesQuery->whereIn('city_id', $allRelevantCityIds);
+        }
+        $placesCollection = $placesQuery->get();
+
+        if ($placesCollection->count() <= 1) {
+            $placesCollection = CityPlace::with('city')->get();
+        }
+
+        $swappablePlaces = $placesCollection->map(fn (CityPlace $place): array => [
+            'id' => $place->id,
+            'name' => $place->name,
+            'city_id' => $place->city_id,
+            'city_name' => $place->city->name ?? '',
+            'description' => $place->place_description ?? $place->description ?? '',
+            'price' => (float) $place->price_per_person,
+            'primary_image' => $place->primary_image ? asset('storage/'.$place->primary_image) : null,
+            'secondary_images' => collect($place->secondary_images ?? [])->map(fn (string $p) => asset('storage/'.$p))->values()->all(),
+        ])->values()->all();
+
         $subtotal = (float) $package->base_price + $package->planItems->sum(function ($item): float {
             return (float) ($item->place?->price_per_person ?? 0) + (float) $item->additional_price;
         });
@@ -90,7 +126,8 @@ class PackageFrontendController extends Controller
             'itinerary',
             'subtotal',
             'discountedTotal',
-            'estimatedTotal'
+            'estimatedTotal',
+            'swappablePlaces'
         ));
     }
 }

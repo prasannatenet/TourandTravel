@@ -257,13 +257,14 @@ class TourPackageController extends Controller
             'inclusions.*.remove_custom_image_one' => ['sometimes', 'boolean'],
             'inclusions.*.remove_custom_image_two' => ['sometimes', 'boolean'],
             'plan_items' => ['nullable', 'array', 'max:100'],
-            'plan_items.*' => ['array:kind,day_number,start_time,city_place_id,package_inclusion_item_key,additional_price'],
+            'plan_items.*' => ['array:kind,day_number,start_time,city_place_id,package_inclusion_item_key,additional_price,show_charge_button'],
             'plan_items.*.kind' => ['required', 'string', 'in:place,inclusion'],
             'plan_items.*.day_number' => ['required', 'integer', 'min:1', 'max:99'],
             'plan_items.*.start_time' => ['required', 'date_format:H:i'],
             'plan_items.*.city_place_id' => ['nullable', 'integer', 'exists:city_places,id'],
             'plan_items.*.package_inclusion_item_key' => ['nullable', 'string'],
             'plan_items.*.additional_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'plan_items.*.show_charge_button' => ['nullable', 'boolean'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'is_active' => ['sometimes', 'boolean'],
         ];
@@ -407,6 +408,7 @@ class TourPackageController extends Controller
                 'day_number' => $item['day_number'],
                 'start_time' => $item['start_time'],
                 'additional_price' => $isInclusion ? 0 : ($item['additional_price'] ?? 0),
+                'show_charge_button' => $isInclusion ? false : (bool) ($item['show_charge_button'] ?? false),
                 'position' => $position + 1,
             ]);
         }

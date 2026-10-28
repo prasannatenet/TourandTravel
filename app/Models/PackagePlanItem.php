@@ -17,6 +17,7 @@ class PackagePlanItem extends Model
         'day_number',
         'start_time',
         'additional_price',
+        'show_charge_button',
         'position',
     ];
 
@@ -26,6 +27,7 @@ class PackagePlanItem extends Model
             'day_number' => 'integer',
             'additional_price' => 'decimal:2',
             'position' => 'integer',
+            'show_charge_button' => 'boolean',
         ];
     }
 

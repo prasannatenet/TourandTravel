@@ -60,6 +60,11 @@ class City extends Model
         return $this->hasMany(CityPlace::class);
     }
 
+    public function hotels(): HasMany
+    {
+        return $this->hasMany(Hotel::class);
+    }
+
     public function primaryImageUrl(): string
     {
         return asset('storage/'.$this->primary_image);

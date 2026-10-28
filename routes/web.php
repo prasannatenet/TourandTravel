@@ -5,10 +5,12 @@ use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CityPlaceController;
 use App\Http\Controllers\Admin\CountryController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\HotelController;
 use App\Http\Controllers\Admin\PackageInclusionController;
 use App\Http\Controllers\Admin\StateController;
 use App\Http\Controllers\Admin\TourPackageController;
 use App\Http\Controllers\Frontend\PackageFrontendController;
+use App\Models\Hotel;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -39,6 +41,10 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('countries/{country}/states', [CityPlaceController::class, 'statesByCountry'])->name('places.states-by-country');
         Route::get('states/{state}/cities', [CityPlaceController::class, 'citiesByState'])->name('places.cities-by-state');
         Route::resource('packages', TourPackageController::class);
+        Route::resource('hotels', HotelController::class)->except(['show']);
+        Route::get('hotels/{hotel}', function (Hotel $hotel) {
+            return redirect()->route('admin.hotels.edit', $hotel);
+        })->name('hotels.show');
         Route::resource('inclusions', PackageInclusionController::class)->except(['show']);
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
     });

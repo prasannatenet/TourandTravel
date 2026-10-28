@@ -47,95 +47,191 @@
             'city_place_id' => $item->city_place_id,
             'package_inclusion_item_key' => $item->package_inclusion_package_id ? 'item_'.$item->package_inclusion_package_id : '',
             'additional_price' => $item->additional_price,
+            'show_charge_button' => (bool) $item->show_charge_button,
         ])->all();
     }
 
     $savedPlanItems ??= [];
-    $maximumPlanDay = old('days', $package->days ?? 1);
+    $maximumPlanDay = max(1, (int) old('days', $package->days ?? 1));
+    $planItemsByDay = collect($savedPlanItems)->groupBy(fn ($item): int => (int) ($item['day_number'] ?? 1));
+    $planSectionNumber = ($showInclusionsSection ?? true) || ! isset($package) ? '04' : '05';
+    $nextPlanItemIndex = 0;
 @endphp
 
 <section id="package-plan" class="scroll-mt-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" data-package-plan-manager>
-    <div class="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-        <div class="flex items-start gap-4">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-sm font-bold text-violet-700">04</span>
+    <!-- Section Header -->
+    <div class="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 bg-slate-50/50">
+        <div class="flex items-start gap-3.5">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm">
+                {{ $planSectionNumber }}
+            </span>
             <div>
-                <h3 class="text-base font-bold text-slate-900">Package plan manager</h3>
-                <p class="mt-1 text-sm text-slate-500">Build the day-by-day schedule with a start time and places from your selected cities.</p>
+                <div class="flex items-center gap-2">
+                    <h3 class="text-base font-bold text-slate-900">Day-by-Day Itinerary Plan</h3>
+                    <span id="plan-duration-badge" class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-700">
+                        {{ $maximumPlanDay }} {{ \Illuminate\Support\Str::plural('Day', $maximumPlanDay) }} Trip
+                    </span>
+                </div>
+                <p class="mt-0.5 text-xs sm:text-sm text-slate-500">
+                    Organize sightseeing places, timings, and stops organized cleanly by each day.
+                </p>
             </div>
         </div>
-        <button type="button" id="add-place-stop" class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/20"><i class="fa-solid fa-plus text-xs"></i> Add place stop</button>
+
+        <div class="flex flex-wrap items-center gap-2">
+            @unless(isset($package))
+                <a href="{{ route('admin.inclusions.index') }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                    <i class="fa-solid fa-list-check"></i> Manage service catalog
+                </a>
+            @endunless
+            <button type="button" id="quick-add-place" class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 cursor-pointer">
+                <i class="fa-solid fa-plus text-xs"></i> Add Place Stop
+            </button>
+        </div>
     </div>
 
-    <div class="space-y-4 px-5 py-5 sm:px-7">
-        <div class="rounded-xl border border-sky-100 bg-sky-50/70 px-4 py-3 text-xs leading-5 text-sky-900">
-            Set a duration for each meal, break, ride, or service and it will count in the day total. Inclusions are scheduled automatically; when no suggested time is set, a new item starts at the previous item's estimated finish. Places added to the plan use that same next time.
+    <div class="space-y-5 px-5 py-5 sm:px-7">
+        <!-- Destination Cities Status Alert -->
+        <div id="destination-cities-alert" class="rounded-xl border border-sky-100 bg-sky-50/70 p-3.5 text-xs leading-relaxed text-sky-900 flex items-start gap-3">
+            <i class="fa-solid fa-location-dot mt-0.5 text-sky-600 text-sm shrink-0"></i>
+            <div class="flex-1">
+                <span class="font-bold text-sky-950">Destination Scoping:</span>
+                <span id="destination-cities-text">
+                    Select destination cities in Step 03 above. Once selected, their attractions will automatically be available in each day's place list.
+                </span>
+            </div>
         </div>
 
-        <section id="package-inclusions" class="scroll-mt-28 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-            <div class="mb-3 flex items-start gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-sm font-bold text-emerald-700"><i class="fa-solid fa-list-check"></i></span>
-                <div>
-                    <h4 class="text-sm font-bold text-slate-900">What’s included</h4>
-                    <p class="mt-1 text-xs text-slate-500">Add each meal, vehicle, or service as a separate entry. You can add the same catalog item more than once.</p>
-                </div>
-            </div>
-            @include('admin.packages._inclusion-picker', [
-                'inclusions' => $inclusions,
-                'packageInclusionRows' => $packageInclusionRows,
-            ])
-        </section>
-
+        <!-- Validation Errors for Plan Items -->
         @foreach($errors->getMessages() as $field => $messages)
             @if(str_starts_with($field, 'plan_items.'))
-                <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{{ $messages[0] }}</div>
+                <div class="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-exclamation text-red-500"></i>
+                    <span>{{ $messages[0] }}</span>
+                </div>
             @endif
         @endforeach
 
-        <div id="plan-item-list" class="space-y-3">
-            @foreach($savedPlanItems as $rowIndex => $planItem)
-                @include('admin.packages._plan-item-row', [
-                    'rowIndex' => $rowIndex,
-                    'rowNumber' => $loop->iteration,
-                    'rowType' => ($planItem['kind'] ?? 'place'),
-                    'planItem' => $planItem,
-                    'places' => $places,
-                    'packageInclusionOptions' => $packageInclusionOptions,
-                    'maxDays' => $maximumPlanDay,
-                ])
+        <!-- Day Filter Tabs Bar -->
+        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1" id="day-nav-tabs">
+                <button type="button" class="day-nav-tab active rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer bg-indigo-600 text-white shadow-sm" data-day-tab="all">
+                    All Days <span class="ml-1 opacity-80" id="badge-all-count">({{ count($savedPlanItems) }})</span>
+                </button>
+                @foreach(range(1, $maximumPlanDay) as $d)
+                    @php($dayCount = $planItemsByDay->get($d, collect())->count())
+                    <button type="button" class="day-nav-tab rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200" data-day-tab="{{ $d }}">
+                        Day {{ $d }} <span class="ml-1 text-[11px] font-semibold text-slate-400" data-day-tab-badge="{{ $d }}">({{ $dayCount }})</span>
+                    </button>
+                @endforeach
+            </div>
+
+            <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+                <span id="plan-total-activities-count">{{ count($savedPlanItems) }} total stops</span>
+            </div>
+        </div>
+
+        <!-- Master Days Container (Holds each Day's block) -->
+        <div id="plan-days-container" class="space-y-6">
+            @foreach(range(1, $maximumPlanDay) as $d)
+                <div class="day-card rounded-2xl border border-slate-200 bg-slate-50/50 p-4 sm:p-5 transition" data-day-card="{{ $d }}">
+                    <!-- Day Header -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3.5 mb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-xs font-black text-white shadow-sm">
+                                D{{ $d }}
+                            </span>
+                            <div>
+                                <h4 class="text-sm font-black text-slate-900 tracking-tight">Day {{ $d }} Itinerary</h4>
+                                <p class="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                                    <span data-day-header-count="{{ $d }}">{{ $planItemsByDay->get($d, collect())->count() }} {{ \Illuminate\Support\Str::plural('activity', $planItemsByDay->get($d, collect())->count()) }}</span>
+                                    <span>&bull;</span>
+                                    <span data-day-header-time="{{ $d }}">Estimated time updating...</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button type="button" class="btn-add-place-to-day inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition cursor-pointer" data-day="{{ $d }}">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Add Place to Day {{ $d }}
+                            </button>
+                            <select data-day-inclusion-catalog aria-label="Choose a service for Day {{ $d }}" class="max-w-40 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700">
+                                <option value="">Choose service...</option>
+                                @foreach($inclusions as $inclusion)
+                                    <option value="{{ $inclusion->id }}" data-default-name="{{ $inclusion->name }}" data-default-scheduled-time="{{ $inclusion->scheduled_time ? substr((string) $inclusion->scheduled_time, 0, 5) : '' }}" data-default-place-from="{{ $inclusion->place_from }}" data-default-place-to="{{ $inclusion->place_to }}" data-default-description="{{ $inclusion->description }}">{{ $inclusion->name }}</option>
+                                @endforeach
+                            </select>
+                            <button type="button" class="btn-add-inclusion-to-day inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50" data-day="{{ $d }}" title="Add service to Day {{ $d }}" @disabled($inclusions->isEmpty())>
+                                <i class="fa-solid fa-utensils text-[10px]"></i> Add Service
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Items container for this specific day -->
+                    <div class="day-items-list space-y-3" data-day-items="{{ $d }}">
+                        @foreach($planItemsByDay->get($d, collect()) as $planItem)
+                            @php($planItemRowIndex = $nextPlanItemIndex++)
+                            @include('admin.packages._plan-item-row', [
+                                'rowIndex' => $planItemRowIndex,
+                                'rowNumber' => $loop->iteration,
+                                'rowType' => ($planItem['kind'] ?? 'place'),
+                                'planItem' => $planItem,
+                                'places' => $places,
+                                'packageInclusionOptions' => $packageInclusionOptions,
+                                'maxDays' => $maximumPlanDay,
+                            ])
+                        @endforeach
+                    </div>
+
+                    <!-- Empty state for this day -->
+                    <div class="day-empty-state rounded-xl border border-dashed border-slate-300 bg-white/70 py-6 px-4 text-center mt-3 {{ $planItemsByDay->get($d, collect())->isNotEmpty() ? 'hidden' : '' }}" data-day-empty="{{ $d }}">
+                        <span class="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-indigo-500 mb-1.5">
+                            <i class="fa-regular fa-calendar-plus text-xs"></i>
+                        </span>
+                        <p class="text-xs font-bold text-slate-700">No activities scheduled for Day {{ $d }} yet</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Click "Add Place to Day {{ $d }}" to schedule the first stop.</p>
+                        <button type="button" class="btn-add-place-to-day mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 text-xs font-bold transition cursor-pointer" data-day="{{ $d }}">
+                            <i class="fa-solid fa-plus text-[10px]"></i> Add First Stop to Day {{ $d }}
+                        </button>
+                    </div>
+                </div>
             @endforeach
         </div>
 
-        <div id="empty-plan-message" class="rounded-xl border border-dashed border-slate-300 px-4 py-7 text-center {{ count($savedPlanItems) ? 'hidden' : '' }}">
-            <span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400"><i class="fa-regular fa-calendar"></i></span>
-            <p class="mt-2 text-sm font-medium text-slate-600">No plan items yet</p>
-            <p class="mt-1 text-xs text-slate-400">Add the first activity to start building the daily schedule.</p>
-        </div>
+        <!-- Hidden Global Flat List for Templates / Orphan fallbacks -->
+        <div id="plan-item-list" class="hidden"></div>
 
+        <!-- Estimated time summary cards -->
         <section class="rounded-xl border border-slate-200 bg-slate-50 p-4" aria-live="polite">
-            <div class="mb-3 flex items-center gap-2">
-                <i class="fa-regular fa-clock text-indigo-600"></i>
-                <h4 class="text-sm font-bold text-slate-800">Estimated time by day</h4>
+            <div class="mb-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-regular fa-clock text-indigo-600"></i>
+                    <h4 class="text-xs sm:text-sm font-bold text-slate-800">Estimated Schedule Summary by Day</h4>
+                </div>
+                <span class="text-[11px] text-slate-400">Calculated from place visit durations</span>
             </div>
-            <div id="day-hours-summary" class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"></div>
-            <p class="mt-2 text-xs text-slate-500">Calculated from each selected place or inclusion duration. Add a duration to an item to include it in the total.</p>
+            <div id="day-hours-summary" class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4"></div>
         </section>
 
+        <!-- Template for Place Stop -->
         <template id="plan-place-item-template">
             @include('admin.packages._plan-item-row', [
                 'rowIndex' => '__INDEX__',
                 'rowNumber' => '__ROW_NUMBER__',
-                'planItem' => [],
+                'planItem' => ['day_number' => '__TARGET_DAY__'],
                 'rowType' => 'place',
                 'places' => $places,
                 'packageInclusionOptions' => $packageInclusionOptions,
                 'maxDays' => $maximumPlanDay,
             ])
         </template>
+
+        <!-- Template for Inclusion Stop -->
         <template id="plan-inclusion-item-template">
             @include('admin.packages._plan-item-row', [
                 'rowIndex' => '__INDEX__',
                 'rowNumber' => '__ROW_NUMBER__',
-                'planItem' => [],
+                'planItem' => ['day_number' => '__TARGET_DAY__'],
                 'rowType' => 'inclusion',
                 'places' => $places,
                 'packageInclusionOptions' => $packageInclusionOptions,
@@ -143,99 +239,372 @@
             ])
         </template>
 
-        <div class="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4 sm:p-5">
+        <!-- Template for Dynamic Day Card -->
+        <template id="day-card-template">
+            <div class="day-card rounded-2xl border border-slate-200 bg-slate-50/50 p-4 sm:p-5 transition" data-day-card="__DAY__">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3.5 mb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-xs font-black text-white shadow-sm">
+                            D__DAY__
+                        </span>
+                        <div>
+                            <h4 class="text-sm font-black text-slate-900 tracking-tight">Day __DAY__ Itinerary</h4>
+                            <p class="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                                <span data-day-header-count="__DAY__">0 activities</span>
+                                <span>&bull;</span>
+                                <span data-day-header-time="__DAY__">No plan items</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="btn-add-place-to-day inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition cursor-pointer" data-day="__DAY__">
+                            <i class="fa-solid fa-plus text-[10px]"></i> Add Place to Day __DAY__
+                        </button>
+                        <select data-day-inclusion-catalog aria-label="Choose a service for Day __DAY__" class="max-w-40 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700">
+                            <option value="">Choose service...</option>
+                            @foreach($inclusions as $inclusion)
+                                <option value="{{ $inclusion->id }}" data-default-name="{{ $inclusion->name }}" data-default-scheduled-time="{{ $inclusion->scheduled_time ? substr((string) $inclusion->scheduled_time, 0, 5) : '' }}" data-default-place-from="{{ $inclusion->place_from }}" data-default-place-to="{{ $inclusion->place_to }}" data-default-description="{{ $inclusion->description }}">{{ $inclusion->name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button" class="btn-add-inclusion-to-day inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 text-xs font-bold text-emerald-700 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50" data-day="__DAY__" title="Add service to Day __DAY__" @disabled($inclusions->isEmpty())>
+                            <i class="fa-solid fa-utensils text-[10px]"></i> Add Service
+                        </button>
+                    </div>
+                </div>
+
+                <div class="day-items-list space-y-3" data-day-items="__DAY__"></div>
+                <div class="day-empty-state rounded-xl border border-dashed border-slate-300 bg-white/70 py-6 px-4 text-center mt-3" data-day-empty="__DAY__">
+                    <span class="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-indigo-500 mb-1.5">
+                        <i class="fa-regular fa-calendar-plus text-xs"></i>
+                    </span>
+                    <p class="text-xs font-bold text-slate-700">No activities scheduled for Day __DAY__ yet</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Click "Add Place to Day __DAY__" to schedule the first stop.</p>
+                    <button type="button" class="btn-add-place-to-day mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 text-xs font-bold transition cursor-pointer" data-day="__DAY__">
+                        <i class="fa-solid fa-plus text-[10px]"></i> Add First Stop to Day __DAY__
+                    </button>
+                </div>
+            </div>
+        </template>
+
+        <!-- Total Price Summary Card -->
+        <div class="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-white to-indigo-50/30 p-4 sm:p-5">
             <div class="mb-4 flex items-center gap-3">
-                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white"><i class="fa-solid fa-calculator text-sm"></i></span>
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"><i class="fa-solid fa-calculator text-sm"></i></span>
                 <div>
-                    <h4 class="text-sm font-bold text-slate-900">Estimated total per person</h4>
-                    <p class="text-xs text-slate-500">Updates as you change the base price or plan.</p>
+                    <h4 class="text-sm font-bold text-slate-900">Estimated Total per Traveler</h4>
+                    <p class="text-xs text-slate-500">Recalculates automatically as you configure base price, attractions, and extras.</p>
                 </div>
             </div>
             <div class="grid grid-cols-1 gap-3 border-t border-indigo-100 pt-3 sm:grid-cols-2 lg:grid-cols-5 sm:items-end">
                 <div>
-                    <p class="text-xs text-slate-500">Base package price</p>
-                    <p id="plan-base-total" class="mt-1 text-sm font-semibold text-slate-700">₹0.00</p>
+                    <p class="text-xs text-slate-500 font-medium">Base Adult Price</p>
+                    <p id="plan-base-total" class="mt-1 text-sm font-bold text-slate-800">₹0.00</p>
                 </div>
                 <div>
-                    <p class="text-xs text-slate-500">Planned place fees and extras</p>
-                    <p id="plan-added-total" class="mt-1 text-sm font-semibold text-slate-700">₹0.00</p>
+                    <p class="text-xs text-slate-500 font-medium">Planned Place Fees & Extras</p>
+                    <p id="plan-added-total" class="mt-1 text-sm font-bold text-slate-800">₹0.00</p>
                 </div>
                 <div>
-                    <p class="text-xs text-slate-500">Discount</p>
-                    <p id="plan-discount-total" class="mt-1 text-sm font-semibold text-emerald-700">—</p>
+                    <p class="text-xs text-slate-500 font-medium">Discount</p>
+                    <p id="plan-discount-total" class="mt-1 text-sm font-bold text-emerald-700">—</p>
                 </div>
                 <div>
-                    <p class="text-xs text-slate-500">Tax</p>
-                    <p id="plan-tax-total" class="mt-1 text-sm font-semibold text-slate-700">—</p>
+                    <p class="text-xs text-slate-500 font-medium">Tax</p>
+                    <p id="plan-tax-total" class="mt-1 text-sm font-bold text-slate-800">—</p>
                 </div>
                 <div class="sm:text-right">
-                    <p class="text-xs font-semibold text-indigo-700">Estimated package total</p>
-                    <p id="plan-grand-total" aria-live="polite" class="mt-1 text-2xl font-bold tracking-tight text-indigo-700">₹0.00</p>
+                    <p class="text-xs font-extrabold uppercase tracking-wide text-indigo-700">Estimated Total</p>
+                    <p id="plan-grand-total" aria-live="polite" class="mt-1 text-2xl font-black tracking-tight text-indigo-700">₹0.00</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
+@if($showInclusionsSection ?? true)
+<!-- Section 05: Package Inclusions -->
+<section id="package-inclusions" class="scroll-mt-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm mt-5">
+    <div class="flex items-start gap-3.5 border-b border-slate-100 px-5 py-5 sm:px-7 bg-slate-50/50">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-sm">
+            05
+        </span>
+        <div>
+            <h3 class="text-base font-bold text-slate-900">Package Inclusions & Amenities</h3>
+            <p class="mt-0.5 text-xs sm:text-sm text-slate-500">
+                Add meals, vehicles, flights, hotels, or other services included with this package.
+            </p>
+        </div>
+    </div>
+
+    <div class="p-5 sm:p-7">
+        @include('admin.packages._inclusion-picker', [
+            'inclusions' => $inclusions,
+            'packageInclusionRows' => $packageInclusionRows,
+        ])
+    </div>
+</section>
+@endif
+
 @push('scripts')
 <script>
 (function () {
     var manager = document.getElementById('package-plan');
-    if (!manager) {
-        return;
-    }
+    if (!manager) return;
 
-    var list = manager.querySelector('#plan-item-list');
+    var daysContainer = manager.querySelector('#plan-days-container');
     var placeTemplate = manager.querySelector('#plan-place-item-template');
     var inclusionTemplate = manager.querySelector('#plan-inclusion-item-template');
-    var emptyMessage = manager.querySelector('#empty-plan-message');
-    var inclusionList = manager.querySelector('#package-inclusion-list');
-    var packageInclusionTemplate = manager.querySelector('#package-inclusion-template');
-    var emptyPackageInclusions = manager.querySelector('#empty-package-inclusions');
-    var addPackageInclusionButton = manager.querySelector('[data-add-package-inclusion]');
-    var addPlaceButton = manager.querySelector('#add-place-stop');
+    var dayCardTemplate = manager.querySelector('#day-card-template');
     var basePriceInput = document.getElementById('base-price');
     var daysInput = document.getElementById('package-days');
+    var quickAddPlaceBtn = manager.querySelector('#quick-add-place');
+    var dayNavTabs = manager.querySelector('#day-nav-tabs');
+
+    var inclusionList = document.querySelector('#package-inclusion-list');
+    var packageInclusionTemplate = document.querySelector('#package-inclusion-template');
+    var emptyPackageInclusions = document.querySelector('#empty-package-inclusions');
+    var packageForm = manager.closest('form');
+
     var nextInclusionIndex = 0;
-    var nextIndex = Array.from(list.querySelectorAll('[data-plan-index]')).reduce(function (highestIndex, row) {
-        return Math.max(highestIndex, Number(row.dataset.planIndex) + 1);
+    var nextIndex = Array.from(document.querySelectorAll('[data-plan-index]')).reduce(function (highest, row) {
+        return Math.max(highest, Number(row.dataset.planIndex) + 1);
     }, 0);
 
     function formatCurrency(amount) {
-        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
+        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
+    }
+
+    function getSelectedCityCheckboxes() {
+        return Array.from(document.querySelectorAll('.package-city:checked'));
     }
 
     function selectedCityIds() {
-        return new Set(Array.from(document.querySelectorAll('.package-city:checked')).map(function (checkbox) {
-            return checkbox.value;
-        }));
+        return new Set(getSelectedCityCheckboxes().map(cb => cb.value));
+    }
+
+    function updateDestinationCitiesAlert() {
+        var alertBox = document.getElementById('destination-cities-alert');
+        var textSpan = document.getElementById('destination-cities-text');
+        var checkedCities = getSelectedCityCheckboxes();
+
+        if (checkedCities.length === 0) {
+            if (alertBox) {
+                alertBox.className = 'rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-relaxed text-amber-900 flex items-start gap-3';
+            }
+            if (textSpan) {
+                textSpan.innerHTML = '<strong class="text-amber-950 font-bold">No destination cities selected yet.</strong> Please check one or more cities in <a href="#package-destinations" class="underline font-bold text-amber-900">Step 03 (Destinations)</a> above to populate attractions for your itinerary stops.';
+            }
+        } else {
+            var cityNames = checkedCities.map(cb => {
+                var label = cb.closest('label');
+                return label ? label.textContent.trim().split(/\s+/)[0] : 'City';
+            }).filter((v, i, a) => a.indexOf(v) === i);
+
+            if (alertBox) {
+                alertBox.className = 'rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs leading-relaxed text-emerald-900 flex items-start gap-3';
+            }
+            if (textSpan) {
+                textSpan.innerHTML = '<strong class="font-bold text-emerald-950">Active Destination Cities:</strong> <span class="font-semibold">' + cityNames.join(', ') + '</span>. Attractions below are filtered to these cities.';
+            }
+        }
     }
 
     function refreshPlaceOptions() {
-        var selectedCities = selectedCityIds();
-        list.querySelectorAll('[data-plan-place]').forEach(function (select) {
-            var hasAvailablePlace = false;
+        var allowedCities = selectedCityIds();
+        updateDestinationCitiesAlert();
 
-            Array.from(select.options).forEach(function (option) {
-                if (!option.value) {
-                    return;
-                }
+        document.querySelectorAll('[data-plan-place]').forEach(function (select) {
+            var hasAnyAllowed = false;
+            var currentVal = select.value;
 
-                var isAllowed = selectedCities.has(option.dataset.cityId || '');
-                option.hidden = !isAllowed;
-                option.disabled = !isAllowed;
-                hasAvailablePlace = hasAvailablePlace || isAllowed;
-
-                if (!isAllowed && option.selected) {
-                    select.value = '';
-                }
+            // Loop through optgroups
+            select.querySelectorAll('optgroup').forEach(function (group) {
+                var groupHasAllowed = false;
+                group.querySelectorAll('option').forEach(function (opt) {
+                    if (!opt.value) return;
+                    var isAllowed = allowedCities.size === 0 || allowedCities.has(opt.dataset.cityId || '');
+                    opt.hidden = !isAllowed;
+                    opt.disabled = !isAllowed;
+                    if (isAllowed) {
+                        groupHasAllowed = true;
+                        hasAnyAllowed = true;
+                    }
+                });
+                group.hidden = !groupHasAllowed;
             });
 
-            select.disabled = !hasAvailablePlace;
+            // If selected option became disabled, reset select
+            var selectedOpt = select.selectedOptions[0];
+            if (selectedOpt && selectedOpt.disabled) {
+                select.value = '';
+            }
+
             updateEstimatedEndTime(select.closest('[data-plan-row]'));
         });
 
         updateTotals();
+    }
+
+    function updateDayTabsAndCards() {
+        var numDays = Math.max(1, Number.parseInt(daysInput?.value || '1', 10) || 1);
+
+        // Update badge
+        var badge = manager.querySelector('#plan-duration-badge');
+        if (badge) badge.textContent = numDays + (numDays === 1 ? ' Day Trip' : ' Days Trip');
+
+        // Ensure Day Cards exist up to numDays
+        for (var d = 1; d <= numDays; d++) {
+            var existingCard = daysContainer.querySelector('[data-day-card="' + d + '"]');
+            if (!existingCard && dayCardTemplate) {
+                var markup = dayCardTemplate.innerHTML.replaceAll('__DAY__', String(d));
+                var tempDiv = document.createElement('div');
+                tempDiv.innerHTML = markup.trim();
+                daysContainer.appendChild(tempDiv.firstElementChild);
+            } else if (existingCard) {
+                existingCard.style.display = '';
+            }
+        }
+
+        // Hide cards beyond numDays if they are empty
+        daysContainer.querySelectorAll('[data-day-card]').forEach(function (card) {
+            var dayNum = Number.parseInt(card.dataset.dayCard, 10);
+            if (dayNum > numDays) {
+                var itemsCount = card.querySelectorAll('[data-plan-row]').length;
+                if (itemsCount === 0) {
+                    card.style.display = 'none';
+                }
+            }
+        });
+
+        // Rebuild Day Nav Tabs
+        renderDayNavTabs(numDays);
+
+        // Update select options for "Move to Day" in all rows
+        document.querySelectorAll('[data-plan-day]').forEach(function (daySelect) {
+            var currentDayVal = Number.parseInt(daySelect.value, 10) || 1;
+            daySelect.innerHTML = '';
+            for (var i = 1; i <= Math.max(numDays, currentDayVal); i++) {
+                var opt = document.createElement('option');
+                opt.value = String(i);
+                opt.textContent = 'Day ' + i;
+                opt.selected = (i === currentDayVal);
+                daySelect.appendChild(opt);
+            }
+        });
+    }
+
+    function renderDayNavTabs(numDays) {
+        if (!dayNavTabs) return;
+
+        var activeTab = dayNavTabs.querySelector('.day-nav-tab.active')?.dataset.dayTab || 'all';
+        var totalRows = document.querySelectorAll('[data-plan-row]').length;
+
+        var html = '<button type="button" class="day-nav-tab ' + (activeTab === 'all' ? 'active bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200') + ' rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer" data-day-tab="all">All Days <span class="ml-1 opacity-80">(' + totalRows + ')</span></button>';
+
+        for (var d = 1; d <= numDays; d++) {
+            var dayCount = document.querySelectorAll('[data-day-items="' + d + '"] [data-plan-row]').length;
+            var isCurrent = (activeTab === String(d));
+            html += '<button type="button" class="day-nav-tab ' + (isCurrent ? 'active bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200') + ' rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer" data-day-tab="' + d + '">Day ' + d + ' <span class="ml-1 text-[11px] font-semibold opacity-75">(' + dayCount + ')</span></button>';
+        }
+
+        dayNavTabs.innerHTML = html;
+    }
+
+    function filterByDayTab(targetDay) {
+        if (!dayNavTabs) return;
+
+        dayNavTabs.querySelectorAll('.day-nav-tab').forEach(function (btn) {
+            var isSelected = btn.dataset.dayTab === targetDay;
+            btn.classList.toggle('active', isSelected);
+            btn.classList.toggle('bg-indigo-600', isSelected);
+            btn.classList.toggle('text-white', isSelected);
+            btn.classList.toggle('shadow-sm', isSelected);
+            btn.classList.toggle('bg-slate-100', !isSelected);
+            btn.classList.toggle('text-slate-600', !isSelected);
+        });
+
+        daysContainer.querySelectorAll('[data-day-card]').forEach(function (card) {
+            if (targetDay === 'all' || card.dataset.dayCard === targetDay) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    function updateDayHoursSummary() {
+        var summary = manager.querySelector('#day-hours-summary');
+        var numberOfDays = Math.max(1, Number.parseInt(daysInput?.value || '1', 10) || 1);
+        var totals = Array.from({ length: numberOfDays }, function () {
+            return { minutes: 0, items: 0, missing: 0 };
+        });
+
+        document.querySelectorAll('[data-plan-row]').forEach(function (row) {
+            var dayNum = Number.parseInt(row.querySelector('[data-plan-day]')?.value || '1', 10) || 1;
+            if (dayNum > numberOfDays) return;
+            var dayTotal = totals[dayNum - 1];
+            if (!dayTotal) return;
+
+            dayTotal.items++;
+            var durationHours = 0;
+            if (row.dataset.planKind === 'place') {
+                durationHours = Number.parseFloat(row.querySelector('[data-plan-place]')?.selectedOptions[0]?.dataset.duration || '0') || 0;
+            } else {
+                durationHours = Number.parseFloat(row.querySelector('[data-plan-inclusion-select]')?.selectedOptions[0]?.dataset.durationHours || '0') || 0;
+            }
+
+            if (durationHours > 0) {
+                dayTotal.minutes += Math.round(durationHours * 60);
+            } else {
+                dayTotal.missing++;
+            }
+        });
+
+        // Update each Day Card's header stats & empty state
+        for (var d = 1; d <= numberOfDays; d++) {
+            var dayItemsContainer = daysContainer.querySelector('[data-day-items="' + d + '"]');
+            var emptyState = daysContainer.querySelector('[data-day-empty="' + d + '"]');
+            var headerCount = daysContainer.querySelector('[data-day-header-count="' + d + '"]');
+            var headerTime = daysContainer.querySelector('[data-day-header-time="' + d + '"]');
+
+            var rowCount = dayItemsContainer ? dayItemsContainer.querySelectorAll('[data-plan-row]').length : 0;
+            if (emptyState) emptyState.classList.toggle('hidden', rowCount > 0);
+            if (headerCount) headerCount.textContent = rowCount + ' ' + (rowCount === 1 ? 'activity' : 'activities');
+
+            var totalMins = totals[d - 1]?.minutes || 0;
+            var hours = Math.floor(totalMins / 60);
+            var mins = totalMins % 60;
+            var formattedTime = totalMins > 0 ? (hours ? hours + 'h ' : '') + (mins ? mins + 'm' : '') + ' total' : 'Duration unstated';
+            if (headerTime) headerTime.textContent = formattedTime;
+        }
+
+        // Update overall activities count
+        var totalActivitiesCount = document.querySelectorAll('[data-plan-row]').length;
+        var totalActivitiesElem = document.getElementById('plan-total-activities-count');
+        if (totalActivitiesElem) {
+            totalActivitiesElem.textContent = totalActivitiesCount + ' total ' + (totalActivitiesCount === 1 ? 'stop' : 'stops');
+        }
+
+        // Render summary grid
+        if (summary) {
+            summary.innerHTML = '';
+            totals.forEach(function (day, index) {
+                var card = document.createElement('div');
+                card.className = 'rounded-xl border border-slate-200 bg-white p-3 shadow-xs';
+                var hours = Math.floor(day.minutes / 60);
+                var mins = day.minutes % 60;
+                var timeStr = day.minutes > 0 ? (hours ? hours + ' hr' + (hours === 1 ? '' : 's') + ' ' : '') + (mins ? mins + ' min' : '') : (day.items ? 'Flexible timing' : 'No activities');
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-700">Day ${index + 1}</span>
+                        <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">${day.items} ${day.items === 1 ? 'stop' : 'stops'}</span>
+                    </div>
+                    <p class="mt-1 text-sm font-black text-slate-900">${timeStr}</p>
+                `;
+                summary.appendChild(card);
+            });
+        }
     }
 
     function updateTotals() {
@@ -244,7 +613,7 @@
         var discountPercentage = Number.parseFloat(document.getElementById('discount-percentage')?.value || '0') || 0;
         var taxPercentage = Number.parseFloat(document.getElementById('tax-percentage')?.value || '0') || 0;
 
-        list.querySelectorAll('[data-plan-row]').forEach(function (row) {
+        document.querySelectorAll('[data-plan-row]').forEach(function (row) {
             var placeSelect = row.querySelector('[data-plan-place]');
             var selectedPlace = placeSelect?.selectedOptions[0];
             var placePrice = row.dataset.planKind === 'place' ? (Number.parseFloat(selectedPlace?.dataset.price || '0') || 0) : 0;
@@ -258,198 +627,24 @@
         var discount = subtotal * discountPercentage / 100;
         var afterDiscount = subtotal - discount;
         var tax = afterDiscount * taxPercentage / 100;
-        manager.querySelector('#plan-discount-total').textContent = '−' + formatCurrency(discount);
-        manager.querySelector('#plan-tax-total').textContent = formatCurrency(tax);
+        manager.querySelector('#plan-discount-total').textContent = discount > 0 ? '−' + formatCurrency(discount) : '—';
+        manager.querySelector('#plan-tax-total').textContent = tax > 0 ? formatCurrency(tax) : '—';
         manager.querySelector('#plan-grand-total').textContent = formatCurrency(afterDiscount + tax);
     }
 
-    function updateDayHoursSummary() {
-        var summary = manager.querySelector('#day-hours-summary');
-        if (!summary) {
-            return;
-        }
-
-        var numberOfDays = Math.max(1, Number.parseInt(daysInput?.value || '1', 10) || 1);
-        var totals = Array.from({ length: numberOfDays }, function () { return { minutes: 0, inclusionMinutes: 0, missing: 0, items: 0 }; });
-
-        list.querySelectorAll('[data-plan-row]').forEach(function (row) {
-            var dayNumber = Number.parseInt(row.querySelector('[data-plan-day]')?.value || '1', 10) || 1;
-            var dayTotal = totals[dayNumber - 1];
-            if (!dayTotal) {
-                return;
-            }
-
-            dayTotal.items++;
-            var durationHours = 0;
-            if (row.dataset.planKind === 'place') {
-                var placeOption = row.querySelector('[data-plan-place]')?.selectedOptions[0];
-                durationHours = Number.parseFloat(placeOption?.dataset.duration || '0') || 0;
-            } else {
-                var inclusionOption = row.querySelector('[data-plan-inclusion-select]')?.selectedOptions[0];
-                durationHours = Number.parseFloat(inclusionOption?.dataset.durationHours || '0') || 0;
-            }
-
-            if (durationHours > 0) {
-                var durationMinutes = Math.round(durationHours * 60);
-                dayTotal.minutes += durationMinutes;
-                if (row.dataset.planKind === 'inclusion') {
-                    dayTotal.inclusionMinutes += durationMinutes;
-                }
-            } else {
-                dayTotal.missing++;
-            }
-        });
-
-        summary.innerHTML = '';
-        totals.forEach(function (day, index) {
-            var card = document.createElement('div');
-            card.className = 'rounded-lg border border-slate-200 bg-white px-3 py-2.5';
-            var title = document.createElement('p');
-            title.className = 'text-xs font-semibold text-slate-600';
-            title.textContent = 'Day ' + (index + 1);
-            var total = document.createElement('p');
-            total.className = 'mt-1 text-base font-bold text-indigo-700';
-            var hours = Math.floor(day.minutes / 60);
-            var minutes = day.minutes % 60;
-            total.textContent = day.minutes > 0
-                ? (hours ? hours + ' hr' + (hours === 1 ? '' : 's') : '') + (hours && minutes ? ' ' : '') + (minutes ? minutes + ' min' : '')
-                : (day.items ? 'Duration not set' : 'No plan items');
-            card.append(title, total);
-            if (day.inclusionMinutes > 0) {
-                var inclusionTime = document.createElement('p');
-                var inclusionHours = Math.floor(day.inclusionMinutes / 60);
-                var inclusionRemainder = day.inclusionMinutes % 60;
-                inclusionTime.className = 'mt-1 text-[11px] text-emerald-700';
-                inclusionTime.textContent = 'Includes ' + (inclusionHours ? inclusionHours + ' hr' + (inclusionHours === 1 ? '' : 's') : '') + (inclusionHours && inclusionRemainder ? ' ' : '') + (inclusionRemainder ? inclusionRemainder + ' min' : '') + ' of package inclusions';
-                card.appendChild(inclusionTime);
-            }
-            if (day.missing > 0) {
-                var note = document.createElement('p');
-                note.className = 'mt-1 text-[11px] text-amber-700';
-                note.textContent = day.missing + ' item' + (day.missing === 1 ? '' : 's') + ' missing duration';
-                card.appendChild(note);
-            }
-            summary.appendChild(card);
-        });
-
-        refreshInclusionScheduleStatuses();
-    }
-
-    function refreshInclusionScheduleStatuses() {
-        if (!inclusionList) {
-            return;
-        }
-
-        inclusionList.querySelectorAll('[data-package-inclusion-row]').forEach(function (inclusionRow) {
-            var inclusionKey = inclusionRow.dataset.inclusionKey;
-            var status = inclusionRow.querySelector('[data-inclusion-schedule-status]');
-            var addButton = inclusionRow.querySelector('[data-add-inclusion-to-plan]');
-            if (!status) {
-                return;
-            }
-
-            var scheduledRows = Array.from(list.querySelectorAll('[data-plan-row]')).filter(function (planRow) {
-                var select = planRow.querySelector('[data-plan-inclusion-select]');
-                return select?.value === inclusionKey;
-            });
-
-            if (scheduledRows.length === 0) {
-                status.textContent = 'Not scheduled; hours are not assigned to a day';
-                status.className = 'mb-3 text-[11px] font-medium text-amber-700';
-                if (addButton) {
-                    addButton.disabled = false;
-                addButton.textContent = 'Add to plan';
-                    addButton.classList.remove('cursor-not-allowed', 'opacity-60');
-                }
-                return;
-            }
-
-            var scheduledDays = Array.from(new Set(scheduledRows.map(function (planRow) {
-                return Number.parseInt(planRow.querySelector('[data-plan-day]')?.value || '1', 10) || 1;
-            }))).sort(function (first, second) { return first - second; });
-            var duration = Number.parseFloat(inclusionRow.querySelector('[data-inclusion-field="custom_duration_hours"]')?.value || '0') || 0;
-            var totalMinutes = Math.round(duration * 60) * scheduledRows.length;
-            var hours = Math.floor(totalMinutes / 60);
-            var minutes = totalMinutes % 60;
-            var countedTime = totalMinutes > 0
-                ? ' · ' + (hours ? hours + ' hr' + (hours === 1 ? '' : 's') : '') + (hours && minutes ? ' ' : '') + (minutes ? minutes + ' min' : '') + ' counted'
-                : ' · set duration to count hours';
-
-            status.textContent = 'Scheduled on Day ' + scheduledDays.join(', Day ') + countedTime;
-            status.className = totalMinutes > 0
-                ? 'mb-3 text-[11px] font-medium text-emerald-700'
-                : 'mb-3 text-[11px] font-medium text-amber-700';
-            if (addButton) {
-                addButton.disabled = true;
-                addButton.textContent = 'Added to plan';
-                addButton.classList.add('cursor-not-allowed', 'opacity-60');
-            }
-        });
-    }
-
-    function refreshInclusionOptions() {
-        if (!inclusionList) {
-            return;
-        }
-
-        var options = Array.from(inclusionList.querySelectorAll('[data-package-inclusion-row]')).map(function (row, index) {
-            var key = row.dataset.inclusionKey;
-            var name = row.querySelector('[data-inclusion-field="custom_name"]')?.value || 'Package inclusion';
-            var duration = row.querySelector('[data-inclusion-field="custom_duration_hours"]')?.value || '';
-            var scheduledTime = row.querySelector('[data-inclusion-field="custom_scheduled_time"]')?.value || '';
-            return { key: key, name: name, duration: duration, scheduledTime: scheduledTime, index: index + 1 };
-        });
-
-        list.querySelectorAll('[data-plan-inclusion-select]').forEach(function (select) {
-            var selectedKey = select.value;
-            select.innerHTML = '<option value="">Choose a package inclusion entry</option>';
-            options.forEach(function (entry) {
-                var option = document.createElement('option');
-                option.value = entry.key;
-                option.dataset.durationHours = entry.duration;
-                option.dataset.scheduledTime = entry.scheduledTime;
-                option.textContent = entry.name + (entry.duration ? ' · ' + entry.duration + ' hrs' : '') + (entry.scheduledTime ? ' · ' + entry.scheduledTime : '') + ' · Entry ' + entry.index;
-                option.selected = entry.key === selectedKey;
-                select.appendChild(option);
-            });
-            if (selectedKey && !options.some(function (entry) { return entry.key === selectedKey; })) {
-                select.value = '';
-            }
-            updateEstimatedEndTime(select.closest('[data-plan-row]'));
-        });
-        updateDayHoursSummary();
-    }
-
-    function addPackageInclusion() {
-        if (!inclusionList || !packageInclusionTemplate) {
-            return;
-        }
-
-        var key = 'new_' + Date.now() + '_' + nextInclusionIndex++;
-        var rowMarkup = packageInclusionTemplate.innerHTML
-            .replaceAll('__KEY__', key)
-            .replaceAll('__ROW_NUMBER__', String(inclusionList.querySelectorAll('[data-package-inclusion-row]').length + 1));
-        var container = document.createElement('div');
-        container.innerHTML = rowMarkup.trim();
-        var row = container.firstElementChild;
-        inclusionList.appendChild(row);
-        emptyPackageInclusions?.classList.add('hidden');
-        row.querySelector('[data-inclusion-catalog]')?.focus();
-        refreshInclusionOptions();
-    }
-
     function updateEstimatedEndTime(row) {
+        if (!row) return;
+
         var placeSelect = row.querySelector('[data-plan-place]');
         var startTimeInput = row.querySelector('[data-plan-time]');
         var endTimePanel = row.querySelector('[data-estimated-end-time]');
         var startTimeValue = row.querySelector('[data-estimated-start-time-value]');
         var endTimeValue = row.querySelector('[data-estimated-end-time-value]');
         var endTimeHelp = row.querySelector('[data-estimated-end-time-help]');
-        if (!endTimePanel) {
-            return;
-        }
+        if (!endTimePanel) return;
+
         var selectedPlace = placeSelect?.selectedOptions[0];
-        var startTime = startTimeInput.value;
+        var startTime = startTimeInput?.value;
         var inclusionSelect = row.querySelector('[data-plan-inclusion-select]');
         var durationHours = placeSelect
             ? Number.parseFloat(selectedPlace?.dataset.duration || '0')
@@ -457,8 +652,9 @@
 
         if ((placeSelect && !placeSelect.value) || !startTime || durationHours <= 0) {
             endTimePanel.classList.add('hidden');
-            startTimeValue.textContent = '';
-            endTimeValue.textContent = '';
+            if (startTimeValue) startTimeValue.textContent = '';
+            if (endTimeValue) endTimeValue.textContent = '';
+            if (endTimeHelp) endTimeHelp.textContent = '';
             return;
         }
 
@@ -473,259 +669,406 @@
         var endMinute = minutesInDay % 60;
         var displayHour = endHour % 12 || 12;
         var meridiem = endHour >= 12 ? 'PM' : 'AM';
-        var nextDayLabel = daysLater > 0 ? ' (+' + daysLater + ' ' + (daysLater === 1 ? 'day' : 'days') + ')' : '';
-        var formattedDuration = String(Number(durationHours.toFixed(2)));
-        var durationUnit = Number(formattedDuration) === 1 ? 'hour' : 'hours';
+        var nextDayLabel = daysLater > 0 ? ' (+' + daysLater + 'd)' : '';
+        var formattedDuration = String(Number(durationHours.toFixed(1))) + ' hrs';
 
         startTimeValue.textContent = startDisplayHour + ':' + String(timeParts[1]).padStart(2, '0') + ' ' + startMeridiem;
         endTimeValue.textContent = displayHour + ':' + String(endMinute).padStart(2, '0') + ' ' + meridiem + nextDayLabel;
-        endTimeHelp.textContent = 'Duration: ' + formattedDuration + ' ' + durationUnit + (placeSelect
-            ? ' · Based on the selected place visit duration.'
-            : ' · Based on this package inclusion duration.');
+        if (endTimeHelp) {
+            endTimeHelp.textContent = 'Approx. visit duration: ' + formattedDuration;
+        }
         endTimePanel.classList.remove('hidden');
     }
 
-    function updateRowNumbers() {
-        var rows = Array.from(list.querySelectorAll('[data-plan-row]'));
-        rows.forEach(function (row, index) {
-            row.querySelector('[data-plan-row-number]').textContent = String(index + 1).padStart(2, '0');
-            row.querySelector('[data-plan-row-label]').textContent = String(index + 1);
-            row.querySelector('[data-plan-day]').max = daysInput?.value || '99';
-        });
+    function calculateNextStartTimeForDay(targetDay) {
+        var dayContainer = daysContainer.querySelector('[data-day-items="' + targetDay + '"]');
+        if (!dayContainer) return '09:00';
 
-        emptyMessage.classList.toggle('hidden', rows.length > 0);
-        updateDayHoursSummary();
-    }
+        var rows = Array.from(dayContainer.querySelectorAll('[data-plan-row]'));
+        if (rows.length === 0) return '09:00';
 
-    function sortPlanItems() {
-        var rows = Array.from(list.querySelectorAll('[data-plan-row]'));
-        rows.sort(function (first, second) {
-            var dayDifference = Number(first.querySelector('[data-plan-day]').value || 1) - Number(second.querySelector('[data-plan-day]').value || 1);
-            if (dayDifference !== 0) {
-                return dayDifference;
-            }
-            return (first.querySelector('[data-plan-time]').value || '').localeCompare(second.querySelector('[data-plan-time]').value || '');
-        });
-        rows.forEach(function (row) { list.appendChild(row); });
-        updateRowNumbers();
-    }
+        // Find latest end time of existing items in this day
+        var latestEndMinutes = 9 * 60; // 09:00 AM default
+        rows.forEach(function (row) {
+            var timeVal = row.querySelector('[data-plan-time]')?.value || '09:00';
+            var parts = timeVal.split(':').map(Number);
+            var startMins = (parts[0] * 60) + parts[1];
 
-    function nextPlanSlot() {
-        var latestEndMinute = 9 * 60;
-
-        list.querySelectorAll('[data-plan-row]').forEach(function (row) {
-            var dayNumber = Number.parseInt(row.querySelector('[data-plan-day]')?.value || '1', 10) || 1;
-            var timeValue = row.querySelector('[data-plan-time]')?.value || '';
-            if (!timeValue) {
-                return;
-            }
-
-            var timeParts = timeValue.split(':').map(Number);
-            var startMinute = ((dayNumber - 1) * 1440) + (timeParts[0] * 60) + timeParts[1];
             var durationHours = 0;
             if (row.dataset.planKind === 'place') {
-                durationHours = Number.parseFloat(row.querySelector('[data-plan-place]')?.selectedOptions[0]?.dataset.duration || '0') || 0;
+                durationHours = Number.parseFloat(row.querySelector('[data-plan-place]')?.selectedOptions[0]?.dataset.duration || '2') || 2;
             } else {
-                durationHours = Number.parseFloat(row.querySelector('[data-plan-inclusion-select]')?.selectedOptions[0]?.dataset.durationHours || '0') || 0;
+                durationHours = Number.parseFloat(row.querySelector('[data-plan-inclusion-select]')?.selectedOptions[0]?.dataset.durationHours || '1.5') || 1.5;
             }
 
-            latestEndMinute = Math.max(latestEndMinute, startMinute + Math.round(durationHours * 60));
+            var endMins = startMins + Math.round(durationHours * 60) + 30; // Add 30 mins buffer for travel/transit
+            if (endMins > latestEndMinutes) latestEndMinutes = endMins;
         });
 
-        var dayNumber = Math.floor(latestEndMinute / 1440) + 1;
-        var minutesInDay = latestEndMinute % 1440;
-        var hour = String(Math.floor(minutesInDay / 60)).padStart(2, '0');
-        var minute = String(minutesInDay % 60).padStart(2, '0');
-
-        return { day: dayNumber, time: hour + ':' + minute };
+        // Cap to reasonable day hours (e.g. max 20:00)
+        latestEndMinutes = Math.min(latestEndMinutes, 20 * 60);
+        var h = Math.floor(latestEndMinutes / 60);
+        var m = Math.floor((latestEndMinutes % 60) / 15) * 15; // round to nearest 15 mins
+        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
     }
 
-    function addPlanItem(kind, inclusionId) {
-        var nextSlot = nextPlanSlot();
-        var template = kind === 'inclusion' ? inclusionTemplate : placeTemplate;
-        var rowMarkup = template.innerHTML
-            .replaceAll('__INDEX__', String(nextIndex++))
-            .replaceAll('__ROW_NUMBER__', String(list.querySelectorAll('[data-plan-row]').length + 1).padStart(2, '0'));
+    function addPlanItem(kind, targetDay, inclusionKey) {
+        targetDay = Number.parseInt(targetDay || '1', 10) || 1;
+        var dayContainer = daysContainer.querySelector('[data-day-items="' + targetDay + '"]');
+        if (!dayContainer) {
+            updateDayTabsAndCards();
+            dayContainer = daysContainer.querySelector('[data-day-items="' + targetDay + '"]');
+        }
+
+        var template = (kind === 'inclusion') ? inclusionTemplate : placeTemplate;
+        if (!template) return;
+
+        var currentIndex = nextIndex++;
+        var totalRows = document.querySelectorAll('[data-plan-row]').length + 1;
+
+        var markup = template.innerHTML
+            .replaceAll('__INDEX__', String(currentIndex))
+            .replaceAll('__ROW_NUMBER__', String(totalRows))
+            .replaceAll('__TARGET_DAY__', String(targetDay));
+
+        var tempDiv = document.createElement('div');
+        tempDiv.innerHTML = markup.trim();
+        var row = tempDiv.firstElementChild;
+        if (kind === 'inclusion') {
+            refreshInclusionOptions(row);
+        }
+
+        // Set Day & Time
+        var daySelect = row.querySelector('[data-plan-day]');
+        if (daySelect) daySelect.value = String(targetDay);
+
+        var startTime = calculateNextStartTimeForDay(targetDay);
+        var timeInput = row.querySelector('[data-plan-time]');
+        if (timeInput) timeInput.value = startTime;
+
+        var dayTag = row.querySelector('[data-row-day-tag]');
+        if (dayTag) dayTag.innerHTML = '<i class="fa-regular fa-calendar text-[10px]"></i> Day ' + targetDay;
+
+        // If inclusion
+        if (kind === 'inclusion' && inclusionKey) {
+            var incSelect = row.querySelector('[data-plan-inclusion-select]');
+            if (incSelect) {
+                incSelect.value = inclusionKey;
+                var scheduledTime = incSelect.selectedOptions[0]?.dataset.scheduledTime;
+                if (scheduledTime) timeInput.value = scheduledTime;
+            }
+        }
+
+        if (dayContainer) {
+            dayContainer.appendChild(row);
+            updateDayTabsAndCards();
+            if (daySelect) {
+                daySelect.value = String(targetDay);
+                row.dataset.planDayValue = String(targetDay);
+            }
+            if (kind === 'inclusion') {
+                placeInclusionDetailsInPlanRow(row);
+            }
+        }
+
+        // Highlight newly added row
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        row.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50/20');
+        setTimeout(() => row.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50/20'), 1500);
+
+        sortDayItems(targetDay);
+        refreshPlaceOptions();
+        updateDayHoursSummary();
+        renderDayNavTabs(Math.max(1, Number.parseInt(daysInput?.value || '1', 10) || 1));
+        updateTotals();
+    }
+
+    function moveRowToDay(row, newDay) {
+        newDay = Number.parseInt(newDay, 10) || 1;
+        var targetContainer = daysContainer.querySelector('[data-day-items="' + newDay + '"]');
+        if (!targetContainer) {
+            updateDayTabsAndCards();
+            targetContainer = daysContainer.querySelector('[data-day-items="' + newDay + '"]');
+        }
+
+        if (targetContainer && row.parentElement !== targetContainer) {
+            targetContainer.appendChild(row);
+
+            var dayTag = row.querySelector('[data-row-day-tag]');
+            if (dayTag) dayTag.innerHTML = '<i class="fa-regular fa-calendar text-[10px]"></i> Day ' + newDay;
+
+            row.dataset.planDayValue = String(newDay);
+            sortDayItems(newDay);
+            updateDayHoursSummary();
+            renderDayNavTabs(Math.max(1, Number.parseInt(daysInput?.value || '1', 10) || 1));
+        }
+    }
+
+    function sortDayItems(dayNum) {
+        var dayContainer = daysContainer.querySelector('[data-day-items="' + dayNum + '"]');
+        if (!dayContainer) return;
+
+        var rows = Array.from(dayContainer.querySelectorAll('[data-plan-row]'));
+        rows.sort(function (a, b) {
+            var timeA = a.querySelector('[data-plan-time]')?.value || '00:00';
+            var timeB = b.querySelector('[data-plan-time]')?.value || '00:00';
+            return timeA.localeCompare(timeB);
+        });
+
+        rows.forEach(function (row, idx) {
+            dayContainer.appendChild(row);
+            var numElem = row.querySelector('[data-plan-row-number]');
+            if (numElem) numElem.textContent = String(idx + 1);
+        });
+    }
+
+    // Refresh Inclusion options in all inclusion selects
+    function refreshInclusionOptions(rowScope) {
+        var options = Array.from(document.querySelectorAll('[data-package-inclusion-row]')).map(function (row, index) {
+            return {
+                key: row.dataset.inclusionKey,
+                name: row.querySelector('[data-inclusion-field="custom_name"]')?.value || 'Package inclusion',
+                duration: row.querySelector('[data-inclusion-field="custom_duration_hours"]')?.value || '',
+                scheduledTime: row.querySelector('[data-inclusion-field="custom_scheduled_time"]')?.value || '',
+                index: index + 1
+            };
+        });
+
+        var inclusionSelects = rowScope
+            ? rowScope.querySelectorAll('[data-plan-inclusion-select]')
+            : document.querySelectorAll('[data-plan-inclusion-select]');
+        inclusionSelects.forEach(function (select) {
+            var selectedKey = select.value;
+            select.innerHTML = '<option value="">Choose a package inclusion entry...</option>';
+            options.forEach(function (entry) {
+                var opt = document.createElement('option');
+                opt.value = entry.key;
+                opt.dataset.durationHours = entry.duration;
+                opt.dataset.scheduledTime = entry.scheduledTime;
+                opt.textContent = entry.name + (entry.duration ? ' · ' + entry.duration + ' hrs' : '') + (entry.scheduledTime ? ' · ' + entry.scheduledTime : '');
+                opt.selected = (entry.key === selectedKey);
+                select.appendChild(opt);
+            });
+            updateEstimatedEndTime(select.closest('[data-plan-row]'));
+        });
+    }
+
+    function addPackageInclusion(catalogOption) {
+        if (!inclusionList || !packageInclusionTemplate) return null;
+
+        var key = 'new_' + Date.now() + '_' + nextInclusionIndex++;
+        var rowMarkup = packageInclusionTemplate.innerHTML
+            .replaceAll('__KEY__', key)
+            .replaceAll('__ROW_NUMBER__', String(document.querySelectorAll('[data-package-inclusion-row]').length + 1));
         var container = document.createElement('div');
         container.innerHTML = rowMarkup.trim();
         var row = container.firstElementChild;
-        list.appendChild(row);
-        row.querySelector('[data-plan-day]').value = String(nextSlot.day);
-        row.querySelector('[data-plan-time]').value = nextSlot.time;
-        if (kind === 'inclusion') {
-            refreshInclusionOptions();
-            var inclusionSelect = row.querySelector('[data-plan-inclusion-select]');
-            inclusionSelect.value = inclusionId;
-            var scheduledTime = inclusionSelect.selectedOptions[0]?.dataset.scheduledTime || '';
-            row.querySelector('[data-plan-time]').value = scheduledTime || nextSlot.time;
-            row.dataset.inclusionAutoStartTime = scheduledTime || nextSlot.time;
-            updateEstimatedEndTime(row);
+
+        inclusionList.appendChild(row);
+        if (emptyPackageInclusions) emptyPackageInclusions.classList.add('hidden');
+        var catalogIdInput = row.querySelector('[data-inclusion-catalog-id]');
+        if (catalogIdInput && catalogOption) {
+            catalogIdInput.value = catalogOption.value;
+            row.querySelector('[data-inclusion-field="custom_name"]').value = catalogOption.dataset.defaultName || '';
+            row.querySelector('[data-inclusion-field="custom_scheduled_time"]').value = catalogOption.dataset.defaultScheduledTime || '';
+            row.querySelector('[data-inclusion-field="custom_place_from"]').value = catalogOption.dataset.defaultPlaceFrom || '';
+            row.querySelector('[data-inclusion-field="custom_place_to"]').value = catalogOption.dataset.defaultPlaceTo || '';
+            row.querySelector('[data-inclusion-field="custom_description"]').value = catalogOption.dataset.defaultDescription || '';
         }
-        sortPlanItems();
-        refreshPlaceOptions();
-        updateDayHoursSummary();
+        refreshInclusionOptions();
+        return key;
     }
 
-    function scheduleInclusionWhenReady(inclusionRow) {
-        if (!inclusionRow) {
-            return;
-        }
-
-        var inclusionKey = inclusionRow.dataset.inclusionKey;
-        var catalogSelect = inclusionRow.querySelector('[data-inclusion-catalog]');
-        var startTime = inclusionRow.querySelector('[data-inclusion-field="custom_scheduled_time"]')?.value || '';
-        var duration = Number.parseFloat(inclusionRow.querySelector('[data-inclusion-field="custom_duration_hours"]')?.value || '0') || 0;
-        var scheduledRows = Array.from(list.querySelectorAll('[data-plan-row]')).filter(function (planRow) {
-            return planRow.querySelector('[data-plan-inclusion-select]')?.value === inclusionKey;
-        });
-
-        if (!catalogSelect?.value || duration <= 0) {
-            return;
-        }
-
-        if (scheduledRows.length === 0) {
-            addPlanItem('inclusion', inclusionKey);
-            return;
-        }
-
-        scheduledRows.forEach(function (planRow) {
-            var startTimeInput = planRow.querySelector('[data-plan-time]');
-            if (!startTimeInput.value) {
-                startTimeInput.value = startTime || '09:00';
-                planRow.dataset.inclusionAutoStartTime = startTime || '09:00';
-                updateEstimatedEndTime(planRow);
-            }
-        });
-    }
-
-    addPlaceButton.addEventListener('click', function () { addPlanItem('place'); });
-    addPackageInclusionButton?.addEventListener('click', addPackageInclusion);
-    inclusionList?.addEventListener('change', function (event) {
-        if (event.target.matches('[data-inclusion-catalog]')) {
-            var row = event.target.closest('[data-package-inclusion-row]');
-            var option = event.target.selectedOptions[0];
-            var values = {
-                custom_name: option?.dataset.defaultName || '',
-                custom_scheduled_time: option?.dataset.defaultScheduledTime || '',
-                custom_place_from: option?.dataset.defaultPlaceFrom || '',
-                custom_place_to: option?.dataset.defaultPlaceTo || '',
-                custom_description: option?.dataset.defaultDescription || ''
-            };
-            Object.keys(values).forEach(function (field) {
-                var control = row.querySelector('[data-inclusion-field="' + field + '"]');
-                if (control) {
-                    control.value = values[field];
-                }
+    function placeInclusionDetailsInPlanRow(planRow) {
+        var inclusionKey = planRow.querySelector('[data-plan-inclusion-select]')?.value;
+        var inclusionDetails = Array.from(document.querySelectorAll('[data-package-inclusion-row]'))
+            .find(function (inclusionRow) {
+                return inclusionRow.dataset.inclusionKey === inclusionKey;
             });
+        var detailsContainer = planRow.querySelector('[data-plan-inclusion-details]');
+        if (inclusionDetails && detailsContainer && inclusionDetails.parentElement !== detailsContainer) {
+            detailsContainer.appendChild(inclusionDetails);
         }
-        refreshInclusionOptions();
-        scheduleInclusionWhenReady(event.target.closest('[data-package-inclusion-row]'));
-    });
-    inclusionList?.addEventListener('input', function (event) {
-        refreshInclusionOptions();
-        if (event.target.matches('[data-inclusion-field="custom_duration_hours"], [data-inclusion-field="custom_scheduled_time"]')) {
-            var inclusionRow = event.target.closest('[data-package-inclusion-row]');
-            if (event.target.matches('[data-inclusion-field="custom_scheduled_time"]')) {
-                var inclusionKey = inclusionRow.dataset.inclusionKey;
-                var suggestedTime = event.target.value || '09:00';
-                list.querySelectorAll('[data-plan-row]').forEach(function (planRow) {
-                    var inclusionSelect = planRow.querySelector('[data-plan-inclusion-select]');
-                    var startTimeInput = planRow.querySelector('[data-plan-time]');
-                    if (inclusionSelect?.value === inclusionKey && planRow.dataset.inclusionAutoStartTime && startTimeInput.value === planRow.dataset.inclusionAutoStartTime) {
-                        startTimeInput.value = suggestedTime;
-                        planRow.dataset.inclusionAutoStartTime = suggestedTime;
-                        updateEstimatedEndTime(planRow);
-                    }
+    }
+
+    function placeScheduledInclusionDetailsInPlanRows() {
+        var inclusionRows = Array.from(document.querySelectorAll('[data-package-inclusion-row]'));
+
+        inclusionRows.forEach(function (inclusionRow) {
+            var inclusionKey = inclusionRow.dataset.inclusionKey;
+            var planSelect = Array.from(document.querySelectorAll('[data-plan-inclusion-select]'))
+                .find(function (select) {
+                    return select.value === inclusionKey;
                 });
+            var planRow = planSelect?.closest('[data-plan-row]');
+            if (planRow) {
+                placeInclusionDetailsInPlanRow(planRow);
             }
-            scheduleInclusionWhenReady(inclusionRow);
-        }
+        });
+    }
+
+    // EVENT LISTENERS
+    // Quick Add Place
+    quickAddPlaceBtn?.addEventListener('click', function () {
+        var activeTab = dayNavTabs?.querySelector('.day-nav-tab.active')?.dataset.dayTab;
+        var targetDay = (activeTab && activeTab !== 'all') ? activeTab : '1';
+        addPlanItem('place', targetDay);
     });
-    inclusionList?.addEventListener('click', function (event) {
-        var addToPlan = event.target.closest('[data-add-inclusion-to-plan]');
-        if (addToPlan) {
-            addPlanItem('inclusion', addToPlan.dataset.addInclusionToPlan);
-            return;
-        }
-        var removeButton = event.target.closest('[data-remove-package-inclusion]');
-        if (!removeButton) {
-            return;
-        }
-        var row = removeButton.closest('[data-package-inclusion-row]');
-        var key = row.dataset.inclusionKey;
-        if (Array.from(list.querySelectorAll('[data-plan-inclusion-select]')).some(function (select) { return select.value === key; })) {
-            window.alert('Remove this entry from the day plan before deleting it.');
-            return;
-        }
-        row.remove();
-        emptyPackageInclusions?.classList.toggle('hidden', inclusionList.querySelectorAll('[data-package-inclusion-row]').length > 0);
-        refreshInclusionOptions();
-    });
-    list.addEventListener('change', function (event) {
-        if (event.target.matches('[data-plan-inclusion-select]')) {
-            var scheduledTime = event.target.selectedOptions[0]?.dataset.scheduledTime || '';
-            if (scheduledTime) {
-                event.target.closest('[data-plan-row]').querySelector('[data-plan-time]').value = scheduledTime;
-            }
-            updateEstimatedEndTime(event.target.closest('[data-plan-row]'));
-            updateDayHoursSummary();
-        }
-    });
-    list.addEventListener('click', function (event) {
-        var removeButton = event.target.closest('[data-remove-plan-row]');
-        if (!removeButton) {
+
+    // Day Container buttons
+    daysContainer.addEventListener('click', function (e) {
+        var addPlaceBtn = e.target.closest('.btn-add-place-to-day');
+        if (addPlaceBtn) {
+            addPlanItem('place', addPlaceBtn.dataset.day);
             return;
         }
 
-        removeButton.closest('[data-plan-row]').remove();
-        updateRowNumbers();
-        updateTotals();
+        var addInclusionBtn = e.target.closest('.btn-add-inclusion-to-day');
+        if (addInclusionBtn) {
+            var dayCard = addInclusionBtn.closest('[data-day-card]');
+            var catalogSelect = dayCard?.querySelector('[data-day-inclusion-catalog]');
+            if (catalogSelect) {
+                var catalogId = catalogSelect.value;
+                if (!catalogId) {
+                    catalogSelect.focus();
+                    return;
+                }
+
+                var catalogOption = catalogSelect.selectedOptions[0];
+                var inclusionKey = addPackageInclusion(catalogOption);
+                if (!inclusionKey) {
+                    return;
+                }
+
+                addPlanItem('inclusion', addInclusionBtn.dataset.day, inclusionKey);
+                catalogSelect.value = '';
+                return;
+            }
+
+            addPlanItem('inclusion', addInclusionBtn.dataset.day);
+            return;
+        }
+
+        var removeBtn = e.target.closest('[data-remove-plan-row]');
+        if (removeBtn) {
+            var row = removeBtn.closest('[data-plan-row]');
+            var dayNum = row.querySelector('[data-plan-day]')?.value || '1';
+            var inclusionKey = row.querySelector('[data-plan-inclusion-select]')?.value;
+            var otherPlanRow = inclusionKey && Array.from(document.querySelectorAll('[data-plan-row]'))
+                .find(function (otherRow) {
+                    return otherRow !== row && otherRow.querySelector('[data-plan-inclusion-select]')?.value === inclusionKey;
+                });
+            if (inclusionKey) {
+                var inclusionDetails = Array.from(document.querySelectorAll('[data-package-inclusion-row]'))
+                    .find(function (detailsRow) {
+                        return detailsRow.dataset.inclusionKey === inclusionKey;
+                    });
+                if (otherPlanRow) {
+                    var otherDetailsContainer = otherPlanRow.querySelector('[data-plan-inclusion-details]');
+                    if (inclusionDetails && otherDetailsContainer) {
+                        otherDetailsContainer.appendChild(inclusionDetails);
+                    }
+                } else {
+                    inclusionDetails?.remove();
+                }
+            }
+            row.remove();
+            refreshInclusionOptions();
+            sortDayItems(dayNum);
+            updateDayHoursSummary();
+            renderDayNavTabs(Math.max(1, Number.parseInt(daysInput?.value || '1', 10) || 1));
+            updateTotals();
+            return;
+        }
     });
-    list.addEventListener('change', function (event) {
-        if (event.target.matches('[data-plan-place]')) {
-            updateEstimatedEndTime(event.target.closest('[data-plan-row]'));
+
+    // Day Change / Move row
+    daysContainer.addEventListener('change', function (e) {
+        if (e.target.matches('[data-plan-day]')) {
+            var row = e.target.closest('[data-plan-row]');
+            moveRowToDay(row, e.target.value);
+        }
+
+        if (e.target.matches('[data-plan-place]')) {
+            updateEstimatedEndTime(e.target.closest('[data-plan-row]'));
+            updateTotals();
+            updateDayHoursSummary();
+        }
+
+        if (e.target.matches('[data-plan-time]')) {
+            var r = e.target.closest('[data-plan-row]');
+            updateEstimatedEndTime(r);
+            sortDayItems(r.querySelector('[data-plan-day]')?.value || '1');
+            updateDayHoursSummary();
+        }
+
+        if (e.target.matches('[data-plan-inclusion-select]')) {
+            var selectedScheduledTime = e.target.selectedOptions[0]?.dataset.scheduledTime;
+            var r2 = e.target.closest('[data-plan-row]');
+            if (selectedScheduledTime) {
+                var timeInp = r2.querySelector('[data-plan-time]');
+                if (timeInp) timeInp.value = selectedScheduledTime;
+            }
+            updateEstimatedEndTime(r2);
+            updateDayHoursSummary();
+        }
+    });
+
+    daysContainer.addEventListener('input', function (e) {
+        if (e.target.matches('[data-plan-extra-price]')) {
             updateTotals();
         }
-
-        if (event.target.matches('[data-plan-time]')) {
-            updateEstimatedEndTime(event.target.closest('[data-plan-row]'));
-            sortPlanItems();
-        }
-
-        if (event.target.matches('[data-plan-day]')) {
-            sortPlanItems();
-            updateDayHoursSummary();
-        }
-
     });
-    list.addEventListener('input', function (event) {
-        if (event.target.matches('[data-plan-time]')) {
-            updateEstimatedEndTime(event.target.closest('[data-plan-row]'));
-        }
 
-        if (event.target.matches('[data-plan-extra-price]')) {
-            updateTotals();
-        }
-
-        if (event.target.matches('[data-plan-day]')) {
-            updateDayHoursSummary();
+    // Day Navigation Tabs click
+    dayNavTabs?.addEventListener('click', function (e) {
+        var tabBtn = e.target.closest('.day-nav-tab');
+        if (tabBtn) {
+            filterByDayTab(tabBtn.dataset.dayTab);
         }
     });
 
-    document.querySelectorAll('.package-country, .package-state, .package-city').forEach(function (checkbox) {
-        checkbox.addEventListener('change', refreshPlaceOptions);
+    // Destination Checkboxes Change (Step 03)
+    document.querySelectorAll('.package-country, .package-state, .package-city').forEach(function (cb) {
+        cb.addEventListener('change', refreshPlaceOptions);
     });
+
+    // Pricing & Duration Inputs
     basePriceInput?.addEventListener('input', updateTotals);
     document.getElementById('discount-percentage')?.addEventListener('input', updateTotals);
     document.getElementById('tax-percentage')?.addEventListener('input', updateTotals);
-    daysInput?.addEventListener('input', updateRowNumbers);
+    daysInput?.addEventListener('input', function () {
+        updateDayTabsAndCards();
+        updateDayHoursSummary();
+    });
 
-    updateRowNumbers();
-    refreshInclusionOptions();
-    inclusionList?.querySelectorAll('[data-package-inclusion-row]').forEach(scheduleInclusionWhenReady);
+    // Inclusion detail fields are embedded in their scheduled plan rows.
+    packageForm?.addEventListener('change', function (e) {
+        if (!e.target.closest('[data-package-inclusion-row]')) return;
+
+        if (e.target.matches('[data-inclusion-image-input]')) {
+            var fileName = e.target.closest('div')?.querySelector('[data-inclusion-image-name]');
+            if (fileName) {
+                fileName.textContent = e.target.files?.[0]?.name || 'No new image selected.';
+            }
+        }
+
+        refreshInclusionOptions();
+    });
+
+    packageForm?.addEventListener('input', function (e) {
+        if (!e.target.closest('[data-package-inclusion-row]')) return;
+        refreshInclusionOptions();
+    });
+
+    // INITIALIZATION
+    updateDayTabsAndCards();
+    placeScheduledInclusionDetailsInPlanRows();
     refreshPlaceOptions();
+    refreshInclusionOptions();
+    document.querySelectorAll('[data-plan-row]').forEach(updateEstimatedEndTime);
     updateDayHoursSummary();
-    list.querySelectorAll('[data-plan-inclusion-select]').forEach(function (select) { updateEstimatedEndTime(select.closest('[data-plan-row]')); });
+    updateTotals();
 })();
 </script>
 @endpush

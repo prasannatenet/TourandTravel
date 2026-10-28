@@ -11,7 +11,7 @@
                 <span class="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-50">
                     <i class="fa-solid fa-suitcase-rolling"></i> Package setup
                 </span>
-                <h2 class="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">Build a trip your guests can understand</h2>
+                <h2 class="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">Build a trip</h2>
                 <p class="mt-2 max-w-xl text-sm leading-6 text-indigo-100">Start with the essentials, choose inclusions and destinations, then lay out each day of the trip.</p>
             </div>
             <a href="{{ route('admin.packages.index') }}" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20">
@@ -22,9 +22,8 @@
             <a href="#package-details" class="rounded-lg px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/15"><span class="mr-1.5 text-indigo-200">01</span> Details</a>
             <a href="#package-commercial" class="rounded-lg px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/15"><span class="mr-1.5 text-indigo-200">02</span> Category & pricing</a>
             <a href="#package-destinations" class="rounded-lg px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/15"><span class="mr-1.5 text-indigo-200">03</span> Destinations</a>
-            <a href="#package-plan" class="rounded-lg px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/15"><span class="mr-1.5 text-indigo-200">03</span> Day-by-day plan</a>
-            <a href="#package-inclusions" class="rounded-lg px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/15"><span class="mr-1.5 text-indigo-200">04</span> Inclusions</a>
-            <a href="#package-images" class="rounded-lg px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/15"><span class="mr-1.5 text-indigo-200">06</span> Images</a>
+            <a href="#package-plan" class="rounded-lg px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/15"><span class="mr-1.5 text-indigo-200">04</span> Day-by-day plan</a>
+            <a href="#package-images" class="rounded-lg px-3 py-1.5 text-xs font-medium text-white/90 transition hover:bg-white/15"><span class="mr-1.5 text-indigo-200">05</span> Images</a>
         </nav>
     </section>
 
@@ -128,7 +127,15 @@
             'inclusions' => $inclusions,
             'inclusionItems' => $inclusionItems,
             'planItems' => $planItems,
+            'showInclusionsSection' => false,
         ])
+
+        <div class="hidden" aria-hidden="true">
+            @include('admin.packages._inclusion-picker', [
+                'inclusions' => $inclusions,
+                'packageInclusionRows' => old('inclusions', []),
+            ])
+        </div>
 
         <section id="package-images" class="scroll-mt-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div class="flex items-start gap-4 border-b border-slate-100 px-5 py-5 sm:px-7">
