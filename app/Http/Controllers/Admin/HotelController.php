@@ -68,6 +68,9 @@ class HotelController extends Controller
         }
 
         unset($validated['country_id'], $validated['state_id'], $validated['password_confirmation']);
+        $validated['adult_cost'] = 0;
+        $validated['child_cost'] = 0;
+        $validated['extra_bed_cost'] = 0;
         $hotel = DB::transaction(function () use ($validated): Hotel {
             $hotel = Hotel::create($validated);
             $hotel->hotel_code = 'HTL-'.str_pad((string) $hotel->id, 6, '0', STR_PAD_LEFT);
@@ -91,6 +94,17 @@ class HotelController extends Controller
         $cities = City::where('state_id', $stateId)->orderBy('name')->get();
 
         return view('admin.hotels.edit', compact('hotel', 'countries', 'states', 'cities', 'countryId', 'stateId', 'cityId'));
+    }
+
+    public function show(Hotel $hotel): View
+    {
+        $hotel->load([
+            'city.state.country',
+            'roomTypes' => fn ($query) => $query->orderBy('name'),
+            'roomTypes.rooms' => fn ($query) => $query->orderBy('name'),
+        ]);
+
+        return view('admin.hotels.show', compact('hotel'));
     }
 
     public function update(Request $request, Hotel $hotel): RedirectResponse
@@ -150,9 +164,6 @@ class HotelController extends Controller
             ],
             'password_confirmation' => ['required_with:password', 'string'],
             'star_rating' => ['required', 'integer', 'between:1,5'],
-            'adult_cost' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'child_cost' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'extra_bed_cost' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'address' => ['required', 'string', 'max:2000'],
         ]);
     }

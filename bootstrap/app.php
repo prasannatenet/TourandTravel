@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureHotelIsAuthenticated;
 use App\Http\Middleware\EnsureIsAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => EnsureIsAdmin::class,
+            'hotel.auth' => EnsureHotelIsAuthenticated::class,
         ]);
         $middleware->redirectGuestsTo('/admin/login');
         $middleware->redirectUsersTo('/admin/dashboard');

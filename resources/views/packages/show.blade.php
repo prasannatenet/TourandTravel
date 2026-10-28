@@ -566,8 +566,7 @@
     })->count();
 
     $hotelCount = $package->planItems
-        ->filter(fn ($item) => $item->item_type === 'place')
-        ->unique('place.city_place_id')
+        ->filter(fn ($item) => $item->item_type === 'hotel')
         ->count();
 
     $mealItems = $package->inclusionItems->filter(function ($item) {
@@ -590,13 +589,14 @@
     $planPricingItems = $package->planItems->map(fn ($item) => [
         'id' => $item->id,
         'day' => $item->day_number,
-        'kind' => $item->package_inclusion_package_id ? 'inclusion' : 'place',
+        'kind' => $item->item_type === 'hotel' ? 'hotel' : ($item->package_inclusion_package_id ? 'inclusion' : 'place'),
         'can_change' => (bool) $item->show_charge_button && (bool) $item->place,
         'current_place_id' => $item->place?->id,
         'original_place_id' => $item->place?->id,
         'place_price' => (float) ($item->place?->price_per_person ?? 0),
         'original_place_price' => (float) ($item->place?->price_per_person ?? 0),
         'additional_price' => (float) ($item->additional_price ?? 0),
+        'hotel_adult_price' => (float) ($item->hotelRoom?->customer_adult_price ?? 0),
         'place_name' => $item->place?->name ?? '',
         'original_place_name' => $item->place?->name ?? '',
         'city_id' => $item->place?->city_id,
@@ -807,7 +807,8 @@
                         @foreach($itinerary as $dayNumber => $items)
                             @php
                                 $firstPlace = $items->first(fn ($i) => $i->place)?->place;
-                                $dayCity = $firstPlace?->city?->name ?? 'Tour';
+                                $firstHotel = $items->first(fn ($i) => $i->item_type === 'hotel')?->hotelRoom?->hotel;
+                                $dayCity = $firstPlace?->city?->name ?? $firstHotel?->city?->name ?? 'Tour';
                             @endphp
                             <button type="button"
                                 class="mmt-day-pill {{ $loop->first ? 'active' : '' }}"
@@ -824,7 +825,8 @@
                         @foreach($itinerary as $dayNumber => $items)
                             @php
                                 $dayPlace = $items->first(fn ($i) => $i->place)?->place;
-                                $dayCityName = $dayPlace?->city?->name ?? 'Sightseeing';
+                                $dayHotel = $items->first(fn ($i) => $i->item_type === 'hotel')?->hotelRoom?->hotel;
+                                $dayCityName = $dayPlace?->city?->name ?? $dayHotel?->city?->name ?? 'Sightseeing';
                             @endphp
 
                             <div id="day-panel-{{ $dayNumber }}" class="day-panel {{ $loop->first ? '' : 'hidden' }}">
@@ -854,20 +856,35 @@
                                     @foreach($items as $item)
                                         @php
                                             $inc = $inclusionDetails[$item->package_inclusion_package_id] ?? [];
+                                            $isHotel = $item->item_type === 'hotel';
                                             $incName = $inc['name']
                                                 ?? $item->packageInclusionItem?->inclusion?->name
+                                                ?? ($isHotel
+                                                    ? ($item->hotelRoom
+                                                        ? (($item->hotelRoom->hotel?->name ?? 'Hotel').' · '.($item->hotelRoom->roomType?->name ?? 'Room type').' · '.$item->hotelRoom->name)
+                                                        : 'Hotel unavailable')
+                                                    : null)
                                                 ?? $item->place?->name
                                                 ?? 'Activity';
                                             $isInclusion = (bool) $item->package_inclusion_package_id;
-                                            $image = $isInclusion
+                                            $hotelRoomImages = collect($item->hotelRoom?->images ?? []);
+                                            $image = $isHotel
+                                                ? ($hotelRoomImages->first() ?? $item->hotelRoom?->hotel?->primary_image)
+                                                : ($isInclusion
                                                 ? ($inc['image_one'] ?? null)
-                                                : ($item->place?->primary_image ?? null);
-                                            $secondaryImages = (!$isInclusion && $item->place)
+                                                : ($item->place?->primary_image ?? null));
+                                            $secondaryImages = $isHotel
+                                                ? ($hotelRoomImages->isNotEmpty()
+                                                    ? $hotelRoomImages->skip(1)->values()->all()
+                                                    : ($item->hotelRoom?->hotel?->secondary_images ?? []))
+                                                : ((!$isInclusion && $item->place)
                                                 ? ($item->place->secondary_images ?? [])
-                                                : [];
-                                            $description = $isInclusion
+                                                : []);
+                                            $description = $isHotel
+                                                ? ($item->hotelRoom?->description ?? null)
+                                                : ($isInclusion
                                                 ? ($inc['description'] ?? null)
-                                                : ($item->place?->place_description ?? $item->place?->description ?? null);
+                                                : ($item->place?->place_description ?? $item->place?->description ?? null));
                                         @endphp
 
                                         <div class="mmt-timeline-stop" id="plan-item-{{ $item->id }}" data-item-id="{{ $item->id }}" data-place-id="{{ $item->place?->id }}">
@@ -886,7 +903,11 @@
                                                             </span>
                                                         @endif
 
-                                                        @if($isInclusion)
+                                                        @if($isHotel)
+                                                            <span class="text-[10px] font-extrabold uppercase rounded px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200">
+                                                                Hotel Check-in
+                                                            </span>
+                                                        @elseif($isInclusion)
                                                             <span class="text-[10px] font-extrabold uppercase rounded px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                                 Included Service
                                                             </span>
@@ -919,7 +940,15 @@
                                                     {{ $incName }}
                                                 </h4>
 
-                                                @if($item->place?->city)
+                                                @if($isHotel && $item->hotelRoom?->hotel?->city)
+                                                    <p class="text-xs text-slate-500 mt-0.5 plan-item-location">
+                                                        <i class="fa-solid fa-location-dot text-blue-500 mr-1"></i>
+                                                        <span class="plan-item-city-name">{{ $item->hotelRoom->hotel->city->name }}</span>
+                                                        @if($item->hotelRoom->hotel->address)
+                                                            · {{ $item->hotelRoom->hotel->address }}
+                                                        @endif
+                                                    </p>
+                                                @elseif($item->place?->city)
                                                     <p class="text-xs text-slate-500 mt-0.5 plan-item-location">
                                                         <i class="fa-solid fa-location-dot text-blue-500 mr-1"></i>
                                                         <span class="plan-item-city-name">{{ $item->place->city->name }}</span>
@@ -932,10 +961,24 @@
 
                                                 {{-- Description --}}
                                                 <p class="text-xs md:text-sm text-slate-600 mt-2 leading-relaxed plan-item-desc">
-                                                    {{ $description ?: ($isInclusion
-                                                        ? 'Enjoy this service as part of your customized holiday package.'
-                                                        : 'Explore this destination and experience the rich local culture.') }}
+                                                    {{ $description ?: ($isHotel
+                                                        ? 'Check in to your selected hotel and room.'
+                                                        : ($isInclusion
+                                                            ? 'Enjoy this service as part of your customized holiday package.'
+                                                            : 'Explore this destination and experience the rich local culture.')) }}
                                                 </p>
+
+                                                @if($isHotel && $item->hotelRoom)
+                                                    @if($item->hotelRoom->hotel)
+                                                        <p class="mt-1 text-xs font-semibold text-amber-700">{{ $item->hotelRoom->hotel->star_rating }}-star hotel</p>
+                                                    @endif
+                                                    <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                                                        <span class="rounded-lg bg-blue-50 px-2.5 py-1 font-semibold text-blue-800">₹{{ number_format((float) $item->hotelRoom->customer_adult_price, 2) }} per adult/night</span>
+                                                        <span class="rounded-lg bg-blue-50 px-2.5 py-1 font-semibold text-blue-800">₹{{ number_format((float) $item->hotelRoom->customer_child_price, 2) }} per child/night</span>
+                                                        <span class="rounded-lg bg-blue-50 px-2.5 py-1 font-semibold text-blue-800">₹{{ number_format((float) $item->hotelRoom->customer_extra_bed_price, 2) }} per extra bed/night</span>
+                                                    </div>
+                                                    <p class="mt-1 text-[11px] font-semibold text-blue-800">₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) $package->nights, 2) }} per adult for {{ $package->nights }} nights is included in the package price (₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) $package->nights * 2, 2) }} for 2 adults).</p>
+                                                @endif
 
                                                 {{-- Customization Status Indicator --}}
                                                 <div class="plan-custom-status hidden items-center justify-between gap-2 mt-3 pt-2 border-t border-slate-100 bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200">
@@ -1474,6 +1517,7 @@
     const swappablePlaces = @json($swappablePlaces ?? []);
     const packageConfig = {
         base_price: {{ (float) $package->base_price }},
+        nights: {{ (int) $package->nights }},
         discount_percentage: {{ (float) ($package->discount_percentage ?? 0) }},
         tax_percentage: {{ (float) ($package->tax_percentage ?? 0) }}
     };
@@ -1783,7 +1827,11 @@
         const customizedItems = [];
 
         planItemsData.forEach(item => {
-            subtotal += Number(item.place_price || 0) + Number(item.additional_price || 0);
+            if (item.kind === 'hotel') {
+                subtotal += Number(item.hotel_adult_price || 0) * Number(packageConfig.nights || 0);
+            } else {
+                subtotal += Number(item.place_price || 0) + Number(item.additional_price || 0);
+            }
             if (item.can_change && item.current_place_id !== item.original_place_id) {
                 const diff = Number(item.place_price || 0) - Number(item.original_place_price || 0);
                 customizedItems.push({

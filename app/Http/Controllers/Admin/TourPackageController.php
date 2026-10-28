@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\City;
 use App\Models\CityPlace;
 use App\Models\Country;
+use App\Models\Hotel;
+use App\Models\HotelRoom;
 use App\Models\PackageDestination;
 use App\Models\PackageInclusion;
 use App\Models\PackageInclusionPackage;
@@ -60,6 +62,8 @@ class TourPackageController extends Controller
             'cities' => City::with('state')->orderBy('name')->get(),
             'places' => CityPlace::with(['city.state.country'])->orderBy('name')->get(),
             'inclusions' => PackageInclusion::orderBy('name')->get(),
+            'hotels' => Hotel::with('city')->orderBy('name')->get(),
+            'hotelRooms' => HotelRoom::query()->with(['hotel.city', 'roomType'])->orderBy('name')->get(),
             'inclusionItems' => [],
             'planItems' => [],
         ]);
@@ -90,7 +94,7 @@ class TourPackageController extends Controller
 
     public function show(TourPackage $package): View
     {
-        $package->load(['destinations.destination', 'galleryImages', 'availabilities', 'inclusionItems.inclusion', 'planItems.place.city', 'planItems.packageInclusionItem.inclusion']);
+        $package->load(['destinations.destination', 'galleryImages', 'availabilities', 'inclusionItems.inclusion', 'planItems.place.city', 'planItems.packageInclusionItem.inclusion', 'planItems.hotelRoom.hotel.city', 'planItems.hotelRoom.roomType']);
         $inclusionDetails = $package->inclusionItems->mapWithKeys(function (PackageInclusionPackage $item): array {
             $inclusion = $item->inclusion;
             $hasCustomization = $item->customized;
@@ -106,7 +110,7 @@ class TourPackageController extends Controller
             ]];
         });
 
-        $subtotal = (float) $package->base_price + $package->planItems->sum(function ($item): float {
+        $subtotal = (float) $package->base_price + $package->hotelCostPerAdult() + $package->planItems->sum(function ($item): float {
             return (float) ($item->place?->price_per_person ?? 0) + (float) $item->additional_price;
         });
         $discountedTotal = $subtotal * (1 - ((float) $package->discount_percentage / 100));
@@ -117,7 +121,7 @@ class TourPackageController extends Controller
 
     public function edit(TourPackage $package): View
     {
-        $package->load(['destinations', 'galleryImages', 'availabilities', 'inclusionItems.inclusion', 'planItems.packageInclusionItem.inclusion']);
+        $package->load(['destinations', 'galleryImages', 'availabilities', 'inclusionItems.inclusion', 'planItems.packageInclusionItem.inclusion', 'planItems.hotelRoom.hotel.city', 'planItems.hotelRoom.roomType']);
 
         return view('admin.packages.edit', [
             'package' => $package,
@@ -126,6 +130,8 @@ class TourPackageController extends Controller
             'cities' => City::with('state')->orderBy('name')->get(),
             'places' => CityPlace::with(['city.state.country'])->orderBy('name')->get(),
             'inclusions' => PackageInclusion::orderBy('name')->get(),
+            'hotels' => Hotel::with('city')->orderBy('name')->get(),
+            'hotelRooms' => HotelRoom::query()->with(['hotel.city', 'roomType'])->orderBy('name')->get(),
             'inclusionItems' => $package->inclusionItems,
             'planItems' => $package->planItems,
         ]);
@@ -257,11 +263,12 @@ class TourPackageController extends Controller
             'inclusions.*.remove_custom_image_one' => ['sometimes', 'boolean'],
             'inclusions.*.remove_custom_image_two' => ['sometimes', 'boolean'],
             'plan_items' => ['nullable', 'array', 'max:100'],
-            'plan_items.*' => ['array:kind,day_number,start_time,city_place_id,package_inclusion_item_key,additional_price,show_charge_button'],
-            'plan_items.*.kind' => ['required', 'string', 'in:place,inclusion'],
+            'plan_items.*' => ['array:kind,day_number,start_time,city_place_id,hotel_room_id,package_inclusion_item_key,additional_price,show_charge_button'],
+            'plan_items.*.kind' => ['required', 'string', 'in:place,inclusion,hotel'],
             'plan_items.*.day_number' => ['required', 'integer', 'min:1', 'max:99'],
             'plan_items.*.start_time' => ['required', 'date_format:H:i'],
             'plan_items.*.city_place_id' => ['nullable', 'integer', 'exists:city_places,id'],
+            'plan_items.*.hotel_room_id' => ['nullable', 'integer', 'exists:hotel_rooms,id'],
             'plan_items.*.package_inclusion_item_key' => ['nullable', 'string'],
             'plan_items.*.additional_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'plan_items.*.show_charge_button' => ['nullable', 'boolean'],
@@ -311,13 +318,18 @@ class TourPackageController extends Controller
             $destinationCityIds = $validated['destinations']['city'] ?? [];
             $selectedCityIds = is_array($destinationCityIds) ? array_map('intval', $destinationCityIds) : [];
             $placeIds = [];
+            $hotelRoomIds = [];
 
             foreach ($validated['plan_items'] ?? [] as $index => $planItem) {
                 if ($planItem['day_number'] > $validated['days']) {
                     $validator->errors()->add("plan_items.{$index}.day_number", 'The plan day cannot be greater than the package duration.');
                 }
 
-                if ($planItem['kind'] === 'place' && ! empty($planItem['city_place_id']) && empty($planItem['package_inclusion_id'])) {
+                if ($planItem['kind'] === 'hotel' && ! empty($planItem['hotel_room_id'])) {
+                    $hotelRoomIds[] = (int) $planItem['hotel_room_id'];
+                } elseif ($planItem['kind'] === 'hotel') {
+                    $validator->errors()->add("plan_items.{$index}.hotel_room_id", 'Choose a hotel room for this check-in.');
+                } elseif ($planItem['kind'] === 'place' && ! empty($planItem['city_place_id']) && empty($planItem['package_inclusion_id'])) {
                     $placeIds[] = (int) $planItem['city_place_id'];
                 } elseif ($planItem['kind'] === 'place') {
                     $validator->errors()->add("plan_items.{$index}.city_place_id", 'Choose a place for this plan item.');
@@ -334,7 +346,7 @@ class TourPackageController extends Controller
                 return;
             }
 
-            if ($placeIds === []) {
+            if ($placeIds === [] && $hotelRoomIds === []) {
                 return;
             }
 
@@ -348,6 +360,24 @@ class TourPackageController extends Controller
             foreach ($validated['plan_items'] as $index => $planItem) {
                 if (($planItem['kind'] ?? null) === 'place' && ! empty($planItem['city_place_id']) && ! in_array((int) $planItem['city_place_id'], $validPlaceIds, true)) {
                     $validator->errors()->add("plan_items.{$index}.city_place_id", 'Choose a place from one of the selected cities.');
+                }
+            }
+
+            if ($hotelRoomIds !== []) {
+                $validHotelRoomIds = HotelRoom::query()
+                    ->whereKey($hotelRoomIds)
+                    ->whereNotNull('customer_adult_price')
+                    ->whereNotNull('customer_child_price')
+                    ->whereNotNull('customer_extra_bed_price')
+                    ->whereHas('hotel', fn ($query) => $query->whereIn('city_id', $selectedCityIds))
+                    ->pluck('id')
+                    ->map(fn ($id): int => (int) $id)
+                    ->all();
+
+                foreach ($validated['plan_items'] as $index => $planItem) {
+                    if (($planItem['kind'] ?? null) === 'hotel' && ! empty($planItem['hotel_room_id']) && ! in_array((int) $planItem['hotel_room_id'], $validHotelRoomIds, true)) {
+                        $validator->errors()->add("plan_items.{$index}.hotel_room_id", 'Choose a room with customer rates from one of the selected destination cities.');
+                    }
                 }
             }
         });
@@ -399,16 +429,19 @@ class TourPackageController extends Controller
         $package->planItems()->delete();
 
         foreach ($items as $position => $item) {
-            $isInclusion = ($item['kind'] ?? 'place') === 'inclusion';
+            $kind = $item['kind'] ?? 'place';
+            $isInclusion = $kind === 'inclusion';
+            $isHotel = $kind === 'hotel';
             $package->planItems()->create([
-                'city_place_id' => $isInclusion ? null : $item['city_place_id'],
+                'city_place_id' => $kind === 'place' ? $item['city_place_id'] : null,
+                'hotel_room_id' => $isHotel ? $item['hotel_room_id'] : null,
                 'package_inclusion_id' => null,
                 'package_inclusion_package_id' => $isInclusion ? $inclusionItemIds[$item['package_inclusion_item_key']] : null,
-                'item_type' => $item['kind'],
+                'item_type' => $kind,
                 'day_number' => $item['day_number'],
                 'start_time' => $item['start_time'],
-                'additional_price' => $isInclusion ? 0 : ($item['additional_price'] ?? 0),
-                'show_charge_button' => $isInclusion ? false : (bool) ($item['show_charge_button'] ?? false),
+                'additional_price' => $isInclusion || $isHotel ? 0 : ($item['additional_price'] ?? 0),
+                'show_charge_button' => $isInclusion || $isHotel ? false : (bool) ($item['show_charge_button'] ?? false),
                 'position' => $position + 1,
             ]);
         }

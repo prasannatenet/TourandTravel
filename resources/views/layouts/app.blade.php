@@ -29,11 +29,13 @@
                     <a href="#destinations" class="text-slate-600 hover:text-indigo-600 transition">Destinations</a>
                     <a href="#about" class="text-slate-600 hover:text-indigo-600 transition">About Us</a>
                     <a href="#contact" class="text-slate-600 hover:text-indigo-600 transition">Contact</a>
+                    <a href="{{ route('hotel.login') }}" class="text-slate-600 hover:text-indigo-600 transition">Hotel Partner Login</a>
                     <a href="{{ route('admin.login') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">Admin Login</a>
                 </div>
 
                 <!-- Mobile menu toggle -->
-                <div class="md:hidden flex items-center">
+                <div class="md:hidden flex items-center gap-3">
+                    <a href="{{ route('hotel.login') }}" class="text-sm font-semibold text-indigo-600">Hotel Partner</a>
                     <button class="text-slate-600 hover:text-indigo-600">
                         <i class="fa-solid fa-bars text-xl"></i>
                     </button>

@@ -11,6 +11,7 @@ class PackagePlanItem extends Model
     protected $fillable = [
         'tour_package_id',
         'city_place_id',
+        'hotel_room_id',
         'package_inclusion_id',
         'package_inclusion_package_id',
         'item_type',
@@ -39,6 +40,11 @@ class PackagePlanItem extends Model
     public function place(): BelongsTo
     {
         return $this->belongsTo(CityPlace::class, 'city_place_id');
+    }
+
+    public function hotelRoom(): BelongsTo
+    {
+        return $this->belongsTo(HotelRoom::class);
     }
 
     public function packageInclusion(): BelongsTo

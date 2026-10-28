@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Hotels')
 @section('header', 'Hotel Management')
-@section('subheader', 'Manage hotels, star ratings, prices, and addresses by city.')
+@section('subheader', 'Manage hotels, star ratings, and addresses by city.')
 @section('content')
 @if (session('success'))
     <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{{ session('success') }}</div>
@@ -22,7 +22,7 @@
 </form>
 <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
     <div class="overflow-x-auto">
-        <table class="w-full min-w-[1100px] text-left text-sm">
+        <table class="w-full min-w-[900px] text-left text-sm">
             <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                     <th class="px-5 py-3">Hotel</th>
@@ -30,9 +30,6 @@
                     <th class="px-5 py-3">Login username</th>
                     <th class="px-5 py-3">Location</th>
                     <th class="px-5 py-3">Stars</th>
-                    <th class="px-5 py-3">Adult</th>
-                    <th class="px-5 py-3">Child</th>
-                    <th class="px-5 py-3">Extra bed</th>
                     <th class="px-5 py-3 text-right">Actions</th>
                 </tr>
             </thead>
@@ -47,11 +44,9 @@
                         <td class="px-5 py-4 text-slate-700">{{ $hotel->username ?: 'Not set' }}</td>
                         <td class="px-5 py-4 text-slate-600">{{ $hotel->city->name }}, {{ $hotel->city->state->name }}, {{ $hotel->city->state->country->name }}</td>
                         <td class="px-5 py-4">{{ $hotel->star_rating }} star</td>
-                        <td class="px-5 py-4">{{ number_format((float) $hotel->adult_cost, 2) }}</td>
-                        <td class="px-5 py-4">{{ number_format((float) $hotel->child_cost, 2) }}</td>
-                        <td class="px-5 py-4">{{ number_format((float) $hotel->extra_bed_cost, 2) }}</td>
                         <td class="px-5 py-4">
                             <div class="flex justify-end gap-2">
+                                <a href="{{ route('admin.hotels.show', $hotel) }}" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">View</a>
                                 <a href="{{ route('admin.hotels.edit', $hotel) }}" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">Edit</a>
                                 <form method="POST" action="{{ route('admin.hotels.destroy', $hotel) }}" onsubmit="return confirm('Delete this hotel?')">
                                     @csrf
@@ -63,7 +58,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-5 py-12 text-center text-slate-500">No hotels found. Add a hotel to get started.</td>
+                        <td colspan="6" class="px-5 py-12 text-center text-slate-500">No hotels found. Add a hotel to get started.</td>
                     </tr>
                 @endforelse
             </tbody>

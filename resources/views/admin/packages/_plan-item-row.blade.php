@@ -1,10 +1,19 @@
 @php
     $rowType = $rowType ?? 'place';
+    $hotels = $hotels ?? collect();
+    $hotelRooms = $hotelRooms ?? collect();
+    $hotelCities = $hotels
+        ->map(fn ($hotel) => $hotel->city)
+        ->filter()
+        ->unique('id')
+        ->sortBy('name')
+        ->values();
     $placesByCity = $places->groupBy(function ($place) {
         return $place->city->name ?? 'Other Destinations';
     });
     $currentDay = (int) ($planItem['day_number'] ?? 1);
     $maxDaysNumber = max(1, (int) ($maxDays ?? 1));
+    $packageNights = max(1, (int) old('nights', $package->nights ?? 1));
 @endphp
 <article class="package-plan-row rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md" data-plan-row data-plan-index="{{ $rowIndex }}" data-plan-kind="{{ $rowType }}" data-plan-day-value="{{ $currentDay }}">
     <input type="hidden" name="plan_items[{{ $rowIndex }}][kind]" value="{{ $rowType }}">
@@ -15,9 +24,9 @@
             <span class="inline-flex items-center gap-1 rounded-md bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-800" data-row-day-tag>
                 <i class="fa-regular fa-calendar text-[10px]"></i> Day {{ $currentDay }}
             </span>
-            <span class="inline-flex items-center gap-1 rounded-md {{ $rowType === 'inclusion' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-sky-50 text-sky-700 border border-sky-100' }} px-2 py-0.5 text-[11px] font-semibold">
-                <i class="{{ $rowType === 'inclusion' ? 'fa-solid fa-utensils' : 'fa-solid fa-landmark' }} text-[10px]"></i>
-                {{ $rowType === 'inclusion' ? 'Included Service' : 'Sightseeing Stop' }}
+            <span class="inline-flex items-center gap-1 rounded-md {{ $rowType === 'inclusion' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : ($rowType === 'hotel' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-sky-50 text-sky-700 border border-sky-100') }} px-2 py-0.5 text-[11px] font-semibold">
+                <i class="{{ $rowType === 'inclusion' ? 'fa-solid fa-utensils' : ($rowType === 'hotel' ? 'fa-solid fa-hotel' : 'fa-solid fa-landmark') }} text-[10px]"></i>
+                {{ $rowType === 'inclusion' ? 'Included Service' : ($rowType === 'hotel' ? 'Hotel Check-in' : 'Sightseeing Stop') }}
             </span>
             <span class="text-xs text-slate-400 font-medium ml-1">
                 Stop <span data-plan-row-number>{{ $rowNumber }}</span>
@@ -44,11 +53,11 @@
     </div>
 
     <!-- Row Controls Grid -->
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-12 items-start">
+    <div class="grid grid-cols-1 items-start gap-4 {{ $rowType === 'hotel' ? 'lg:grid-cols-4' : 'sm:grid-cols-12' }}">
         <!-- Start Time -->
-        <div class="sm:col-span-3">
-            <label for="plan-time-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">Start Time <span class="text-red-500">*</span></label>
-            <input id="plan-time-{{ $rowIndex }}" type="time" name="plan_items[{{ $rowIndex }}][start_time]" value="{{ isset($planItem['start_time']) ? substr((string) $planItem['start_time'], 0, 5) : '09:00' }}" required data-plan-time class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
+        <div class="{{ $rowType === 'hotel' ? 'lg:col-span-1' : 'sm:col-span-3' }} min-w-0">
+            <label for="plan-time-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">{{ $rowType === 'hotel' ? 'Check-in Time' : 'Start Time' }} <span class="text-red-500">*</span></label>
+            <input id="plan-time-{{ $rowIndex }}" type="time" name="plan_items[{{ $rowIndex }}][start_time]" value="{{ isset($planItem['start_time']) ? substr((string) $planItem['start_time'], 0, 5) : ($rowType === 'hotel' ? '14:00' : '09:00') }}" required data-plan-time class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20">
             <div data-estimated-end-time class="mt-1.5 hidden flex items-center gap-1.5 rounded-md bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700 border border-indigo-100">
                 <i class="fa-regular fa-clock text-[10px]"></i>
                 <span data-estimated-start-time-value></span> &ndash; <span data-estimated-end-time-value></span>
@@ -56,7 +65,7 @@
         </div>
 
         <!-- Place / Inclusion Select -->
-        @if($rowType !== 'inclusion')
+        @if($rowType === 'place')
             <div class="sm:col-span-6">
                 <label for="plan-place-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">
                     Sightseeing Attraction <span class="text-red-500">*</span>
@@ -81,7 +90,7 @@
                 </select>
                 <p data-estimated-end-time-help class="mt-1 text-[11px] text-slate-500"></p>
             </div>
-        @else
+        @elseif($rowType === 'inclusion')
             <div class="sm:col-span-6">
                 <label for="plan-inclusion-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">
                     Package Inclusion Service <span class="text-red-500">*</span>
@@ -100,9 +109,80 @@
                 </select>
                 <p data-estimated-end-time-help class="mt-1 text-[11px] text-slate-500"></p>
             </div>
+        @else
+            @php($selectedHotelRoom = $hotelRooms->firstWhere('id', $planItem['hotel_room_id'] ?? null))
+            @php($selectedHotel = $selectedHotelRoom?->hotel)
+            <div class="min-w-0 rounded-xl border border-blue-100 bg-blue-50/40 p-4 lg:col-span-3">
+                <div class="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-3">
+                    <div class="min-w-0">
+                        <label for="plan-hotel-city-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">
+                            Destination City <span class="text-red-500">*</span>
+                        </label>
+                        <select id="plan-hotel-city-{{ $rowIndex }}" data-plan-hotel-city required class="block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                            <option value="">Choose a city...</option>
+                            @foreach($hotelCities as $hotelCity)
+                                <option value="{{ $hotelCity->id }}"
+                                    data-city-id="{{ $hotelCity->id }}"
+                                    @selected((string) ($selectedHotelRoom?->hotel?->city_id ?? '') === (string) $hotelCity->id)>
+                                    {{ $hotelCity->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="min-w-0">
+                        <label for="plan-hotel-select-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">
+                            Hotel <span class="text-red-500">*</span>
+                        </label>
+                        <select id="plan-hotel-select-{{ $rowIndex }}" data-plan-hotel required class="block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                            <option value="">Choose a hotel...</option>
+                            @foreach($hotels as $hotel)
+                                <option value="{{ $hotel->id }}"
+                                    data-city-id="{{ $hotel->city_id }}"
+                                    @selected((string) ($selectedHotel?->id ?? '') === (string) $hotel->id)>
+                                    {{ $hotel->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="min-w-0">
+                        <label for="plan-hotel-room-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">
+                            Room Type <span class="text-red-500">*</span>
+                        </label>
+                        <select id="plan-hotel-room-{{ $rowIndex }}" name="plan_items[{{ $rowIndex }}][hotel_room_id]" required data-plan-hotel-room class="block min-w-0 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                            <option value="">Choose a room...</option>
+                            @foreach($hotelRooms as $hotelRoom)
+                                @php($hasCustomerRates = $hotelRoom->customer_adult_price !== null && $hotelRoom->customer_child_price !== null && $hotelRoom->customer_extra_bed_price !== null)
+                                <option value="{{ $hotelRoom->id }}"
+                                    data-city-id="{{ $hotelRoom->hotel?->city_id }}"
+                                    data-hotel-id="{{ $hotelRoom->hotel_id }}"
+                                    data-has-customer-rates="{{ $hasCustomerRates ? '1' : '0' }}"
+                                    data-customer-adult-price="{{ $hotelRoom->customer_adult_price }}"
+                                    data-customer-child-price="{{ $hotelRoom->customer_child_price }}"
+                                    data-customer-extra-bed-price="{{ $hotelRoom->customer_extra_bed_price }}"
+                                    @selected((string) ($planItem['hotel_room_id'] ?? '') === (string) $hotelRoom->id)
+                                    @disabled(!$hasCustomerRates)>
+                                    {{ $hotelRoom->roomType?->name }} · {{ $hotelRoom->name }}{{ $hasCustomerRates ? '' : ' · Set customer rates first' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div data-hotel-rate-summary class="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+                    @if($selectedHotelRoom && $selectedHotelRoom->customer_adult_price !== null && $selectedHotelRoom->customer_child_price !== null && $selectedHotelRoom->customer_extra_bed_price !== null)
+                        <span class="rounded-lg bg-white px-2.5 py-1 font-semibold text-slate-700">₹{{ number_format((float) $selectedHotelRoom->customer_adult_price, 2) }} per adult/night</span>
+                        <span class="rounded-lg bg-white px-2.5 py-1 font-semibold text-slate-700">₹{{ number_format((float) $selectedHotelRoom->customer_child_price, 2) }} per child/night</span>
+                        <span class="rounded-lg bg-white px-2.5 py-1 font-semibold text-slate-700">₹{{ number_format((float) $selectedHotelRoom->customer_extra_bed_price, 2) }} per extra bed/night</span>
+                        <span class="w-full font-semibold text-blue-800">Included in adult package price: ₹{{ number_format((float) $selectedHotelRoom->customer_adult_price * $packageNights, 2) }} per adult for {{ $packageNights }} nights (₹{{ number_format((float) $selectedHotelRoom->customer_adult_price * $packageNights * 2, 2) }} for 2 adults).</span>
+                    @else
+                        Choose a city, hotel, and room with customer rates.
+                    @endif
+                </div>
+                <p class="mt-1 text-[11px] text-slate-400">The adult room rate per night is added to the package adult price for each package night. Child and extra-bed rates are shown for reference.</p>
+            </div>
         @endif
 
         <!-- Extra Price -->
+        @if($rowType !== 'hotel')
         <div class="sm:col-span-3">
             <label for="plan-extra-price-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">
                 Extra Cost <span class="font-normal text-slate-400">(optional)</span>
@@ -113,6 +193,7 @@
             </div>
             <p class="mt-1 text-[11px] text-slate-400">Per traveler fee</p>
         </div>
+        @endif
     </div>
 
     @if($rowType === 'inclusion')

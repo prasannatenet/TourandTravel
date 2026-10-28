@@ -59,6 +59,8 @@ class PackageFrontendController extends Controller
             'inclusionItems.inclusion',
             'planItems.place.city.state.country',
             'planItems.packageInclusionItem.inclusion',
+            'planItems.hotelRoom.hotel.city',
+            'planItems.hotelRoom.roomType',
         ]);
 
         $inclusionDetails = $package->inclusionItems->mapWithKeys(function ($item): array {
@@ -114,7 +116,7 @@ class PackageFrontendController extends Controller
             'secondary_images' => collect($place->secondary_images ?? [])->map(fn (string $p) => asset('storage/'.$p))->values()->all(),
         ])->values()->all();
 
-        $subtotal = (float) $package->base_price + $package->planItems->sum(function ($item): float {
+        $subtotal = (float) $package->base_price + $package->hotelCostPerAdult() + $package->planItems->sum(function ($item): float {
             return (float) ($item->place?->price_per_person ?? 0) + (float) $item->additional_price;
         });
         $discountedTotal = $subtotal * (1 - ((float) $package->discount_percentage / 100));

@@ -41,10 +41,11 @@
 
     if ($savedPlanItems === null && isset($package)) {
         $savedPlanItems = $package->planItems->map(fn ($item): array => [
-            'kind' => $item->package_inclusion_package_id ? 'inclusion' : 'place',
+            'kind' => $item->item_type === 'hotel' ? 'hotel' : ($item->package_inclusion_package_id ? 'inclusion' : 'place'),
             'day_number' => $item->day_number,
             'start_time' => $item->start_time,
             'city_place_id' => $item->city_place_id,
+            'hotel_room_id' => $item->hotel_room_id,
             'package_inclusion_item_key' => $item->package_inclusion_package_id ? 'item_'.$item->package_inclusion_package_id : '',
             'additional_price' => $item->additional_price,
             'show_charge_button' => (bool) $item->show_charge_button,
@@ -155,6 +156,9 @@
                             <button type="button" class="btn-add-place-to-day inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition cursor-pointer" data-day="{{ $d }}">
                                 <i class="fa-solid fa-plus text-[10px]"></i> Add Place to Day {{ $d }}
                             </button>
+                            <button type="button" class="btn-add-hotel-to-day inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm transition hover:bg-blue-50" data-day="{{ $d }}">
+                                <i class="fa-solid fa-hotel text-[10px]"></i> Add Hotel Check-in
+                            </button>
                             <select data-day-inclusion-catalog aria-label="Choose a service for Day {{ $d }}" class="max-w-40 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700">
                                 <option value="">Choose service...</option>
                                 @foreach($inclusions as $inclusion)
@@ -177,6 +181,8 @@
                                 'rowType' => ($planItem['kind'] ?? 'place'),
                                 'planItem' => $planItem,
                                 'places' => $places,
+                                'hotels' => $hotels,
+                                'hotelRooms' => $hotelRooms,
                                 'packageInclusionOptions' => $packageInclusionOptions,
                                 'maxDays' => $maximumPlanDay,
                             ])
@@ -221,6 +227,8 @@
                 'planItem' => ['day_number' => '__TARGET_DAY__'],
                 'rowType' => 'place',
                 'places' => $places,
+                'hotels' => $hotels,
+                'hotelRooms' => $hotelRooms,
                 'packageInclusionOptions' => $packageInclusionOptions,
                 'maxDays' => $maximumPlanDay,
             ])
@@ -234,6 +242,23 @@
                 'planItem' => ['day_number' => '__TARGET_DAY__'],
                 'rowType' => 'inclusion',
                 'places' => $places,
+                'hotels' => $hotels,
+                'hotelRooms' => $hotelRooms,
+                'packageInclusionOptions' => $packageInclusionOptions,
+                'maxDays' => $maximumPlanDay,
+            ])
+        </template>
+
+        <!-- Template for Hotel Check-in -->
+        <template id="plan-hotel-item-template">
+            @include('admin.packages._plan-item-row', [
+                'rowIndex' => '__INDEX__',
+                'rowNumber' => '__ROW_NUMBER__',
+                'planItem' => ['day_number' => '__TARGET_DAY__'],
+                'rowType' => 'hotel',
+                'places' => $places,
+                'hotels' => $hotels,
+                'hotelRooms' => $hotelRooms,
                 'packageInclusionOptions' => $packageInclusionOptions,
                 'maxDays' => $maximumPlanDay,
             ])
@@ -260,6 +285,9 @@
                         <button type="button" class="btn-add-place-to-day inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition cursor-pointer" data-day="__DAY__">
                             <i class="fa-solid fa-plus text-[10px]"></i> Add Place to Day __DAY__
                         </button>
+                        <button type="button" class="btn-add-hotel-to-day inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm transition hover:bg-blue-50" data-day="__DAY__">
+                            <i class="fa-solid fa-hotel text-[10px]"></i> Add Hotel Check-in
+                        </button>
                         <select data-day-inclusion-catalog aria-label="Choose a service for Day __DAY__" class="max-w-40 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700">
                             <option value="">Choose service...</option>
                             @foreach($inclusions as $inclusion)
@@ -281,6 +309,9 @@
                     <p class="text-[11px] text-slate-400 mt-0.5">Click "Add Place to Day __DAY__" to schedule the first stop.</p>
                     <button type="button" class="btn-add-place-to-day mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 text-xs font-bold transition cursor-pointer" data-day="__DAY__">
                         <i class="fa-solid fa-plus text-[10px]"></i> Add First Stop to Day __DAY__
+                    </button>
+                    <button type="button" class="btn-add-hotel-to-day mt-2.5 ml-1.5 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-50" data-day="__DAY__">
+                        <i class="fa-solid fa-hotel text-[10px]"></i> Add Hotel Check-in
                     </button>
                 </div>
             </div>
@@ -354,9 +385,11 @@
     var daysContainer = manager.querySelector('#plan-days-container');
     var placeTemplate = manager.querySelector('#plan-place-item-template');
     var inclusionTemplate = manager.querySelector('#plan-inclusion-item-template');
+    var hotelTemplate = manager.querySelector('#plan-hotel-item-template');
     var dayCardTemplate = manager.querySelector('#day-card-template');
     var basePriceInput = document.getElementById('base-price');
     var daysInput = document.getElementById('package-days');
+    var nightsInput = document.getElementById('package-nights');
     var quickAddPlaceBtn = manager.querySelector('#quick-add-place');
     var dayNavTabs = manager.querySelector('#day-nav-tabs');
 
@@ -443,6 +476,87 @@
         });
 
         updateTotals();
+    }
+
+    function refreshHotelRoomOptions() {
+        var allowedCities = selectedCityIds();
+
+        document.querySelectorAll('[data-plan-hotel-city]').forEach(function (citySelect) {
+            var row = citySelect.closest('[data-plan-row]');
+            var hotelSelect = row?.querySelector('[data-plan-hotel]');
+            var roomSelect = row?.querySelector('[data-plan-hotel-room]');
+            if (!hotelSelect || !roomSelect) return;
+
+            var availableCityOptions = Array.from(citySelect.options).filter(function (option) {
+                if (!option.value) return false;
+
+                var isAllowed = allowedCities.has(option.dataset.cityId || '');
+                option.hidden = !isAllowed;
+                option.disabled = !isAllowed;
+                return isAllowed;
+            });
+
+            if (citySelect.selectedOptions[0]?.disabled) {
+                citySelect.value = '';
+            }
+
+            if (!citySelect.value && availableCityOptions.length === 1) {
+                citySelect.value = availableCityOptions[0].value;
+            }
+
+            var selectedCityId = citySelect.value;
+            var availableHotelOptions = Array.from(hotelSelect.options).filter(function (option) {
+                if (!option.value) return false;
+
+                var isAllowed = option.dataset.cityId === selectedCityId && allowedCities.has(option.dataset.cityId || '');
+                option.hidden = !isAllowed;
+                option.disabled = !isAllowed;
+                return isAllowed;
+            });
+
+            if (hotelSelect.selectedOptions[0]?.disabled) {
+                hotelSelect.value = '';
+            }
+
+            var selectedHotelId = hotelSelect.value;
+            Array.from(roomSelect.options).forEach(function (option) {
+                if (!option.value) return;
+
+                var isAllowed = option.dataset.hotelId === selectedHotelId
+                    && option.dataset.cityId === selectedCityId
+                    && allowedCities.has(option.dataset.cityId || '');
+                option.hidden = !isAllowed;
+                option.disabled = !isAllowed || option.dataset.hasCustomerRates !== '1';
+            });
+
+            var selectedOption = roomSelect.selectedOptions[0];
+            if (selectedOption?.disabled) {
+                roomSelect.value = '';
+            }
+
+            if (!selectedHotelId && availableHotelOptions.length === 1) {
+                hotelSelect.value = availableHotelOptions[0].value;
+                refreshHotelRoomOptionsForRow(row, selectedCityId, hotelSelect.value);
+            }
+
+            updateHotelRateSummary(row);
+        });
+
+        updateTotals();
+    }
+
+    function refreshHotelRoomOptionsForRow(row, selectedCityId, selectedHotelId) {
+        var roomSelect = row.querySelector('[data-plan-hotel-room]');
+        if (!roomSelect) return;
+
+        Array.from(roomSelect.options).forEach(function (option) {
+            if (!option.value) return;
+
+            var isAllowed = option.dataset.hotelId === selectedHotelId
+                && option.dataset.cityId === selectedCityId;
+            option.hidden = !isAllowed;
+            option.disabled = !isAllowed || option.dataset.hasCustomerRates !== '1';
+        });
     }
 
     function updateDayTabsAndCards() {
@@ -549,7 +663,7 @@
             var durationHours = 0;
             if (row.dataset.planKind === 'place') {
                 durationHours = Number.parseFloat(row.querySelector('[data-plan-place]')?.selectedOptions[0]?.dataset.duration || '0') || 0;
-            } else {
+            } else if (row.dataset.planKind === 'inclusion') {
                 durationHours = Number.parseFloat(row.querySelector('[data-plan-inclusion-select]')?.selectedOptions[0]?.dataset.durationHours || '0') || 0;
             }
 
@@ -618,7 +732,11 @@
             var selectedPlace = placeSelect?.selectedOptions[0];
             var placePrice = row.dataset.planKind === 'place' ? (Number.parseFloat(selectedPlace?.dataset.price || '0') || 0) : 0;
             var extraPrice = Number.parseFloat(row.querySelector('[data-plan-extra-price]')?.value || '0') || 0;
-            addedPrice += placePrice + extraPrice;
+            var roomSelect = row.querySelector('[data-plan-hotel-room]');
+            var adultRoomPrice = Number.parseFloat(roomSelect?.selectedOptions[0]?.dataset.customerAdultPrice || '0') || 0;
+            var packageNights = Number.parseInt(nightsInput?.value || '0', 10) || 0;
+            var hotelPrice = row.dataset.planKind === 'hotel' ? adultRoomPrice * packageNights : 0;
+            addedPrice += placePrice + extraPrice + hotelPrice;
         });
 
         manager.querySelector('#plan-base-total').textContent = formatCurrency(basePrice);
@@ -630,6 +748,49 @@
         manager.querySelector('#plan-discount-total').textContent = discount > 0 ? '−' + formatCurrency(discount) : '—';
         manager.querySelector('#plan-tax-total').textContent = tax > 0 ? formatCurrency(tax) : '—';
         manager.querySelector('#plan-grand-total').textContent = formatCurrency(afterDiscount + tax);
+    }
+
+    function updateHotelRateSummary(row) {
+        if (!row) return;
+
+        var select = row.querySelector('[data-plan-hotel-room]');
+        var summary = row.querySelector('[data-hotel-rate-summary]');
+        if (!select || !summary) return;
+
+        var option = select.selectedOptions[0];
+        summary.innerHTML = '';
+        if (!select.value) {
+            summary.textContent = 'Choose a city, hotel, and room with customer rates.';
+            return;
+        }
+
+        var packageNights = Number.parseInt(nightsInput?.value || '0', 10) || 0;
+        var adultPrice = Number(option.dataset.customerAdultPrice || 0);
+        var adultPackagePrice = adultPrice * packageNights;
+        [
+            ['adult', option.dataset.customerAdultPrice],
+            ['child', option.dataset.customerChildPrice],
+            ['extra bed', option.dataset.customerExtraBedPrice]
+        ].forEach(function (price) {
+            var item = document.createElement('span');
+            item.className = 'rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-700';
+            item.textContent = '₹' + Number(price[1]).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + ' per ' + price[0] + '/night';
+            summary.appendChild(item);
+        });
+
+        var packagePrice = document.createElement('span');
+        packagePrice.className = 'w-full font-semibold text-blue-800';
+        packagePrice.textContent = 'Included in adult package price: ₹' + adultPackagePrice.toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }) + ' per adult for ' + packageNights + ' nights (₹' + (adultPackagePrice * 2).toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }) + ' for 2 adults).';
+        summary.appendChild(packagePrice);
     }
 
     function updateEstimatedEndTime(row) {
@@ -697,7 +858,7 @@
             var durationHours = 0;
             if (row.dataset.planKind === 'place') {
                 durationHours = Number.parseFloat(row.querySelector('[data-plan-place]')?.selectedOptions[0]?.dataset.duration || '2') || 2;
-            } else {
+            } else if (row.dataset.planKind === 'inclusion') {
                 durationHours = Number.parseFloat(row.querySelector('[data-plan-inclusion-select]')?.selectedOptions[0]?.dataset.durationHours || '1.5') || 1.5;
             }
 
@@ -720,7 +881,7 @@
             dayContainer = daysContainer.querySelector('[data-day-items="' + targetDay + '"]');
         }
 
-        var template = (kind === 'inclusion') ? inclusionTemplate : placeTemplate;
+        var template = kind === 'inclusion' ? inclusionTemplate : (kind === 'hotel' ? hotelTemplate : placeTemplate);
         if (!template) return;
 
         var currentIndex = nextIndex++;
@@ -742,7 +903,7 @@
         var daySelect = row.querySelector('[data-plan-day]');
         if (daySelect) daySelect.value = String(targetDay);
 
-        var startTime = calculateNextStartTimeForDay(targetDay);
+        var startTime = kind === 'hotel' ? '14:00' : calculateNextStartTimeForDay(targetDay);
         var timeInput = row.querySelector('[data-plan-time]');
         if (timeInput) timeInput.value = startTime;
 
@@ -769,18 +930,26 @@
             if (kind === 'inclusion') {
                 placeInclusionDetailsInPlanRow(row);
             }
+            if (kind === 'hotel') {
+                refreshHotelRoomOptions();
+            }
         }
-
-        // Highlight newly added row
-        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        row.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50/20');
-        setTimeout(() => row.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50/20'), 1500);
 
         sortDayItems(targetDay);
         refreshPlaceOptions();
         updateDayHoursSummary();
         renderDayNavTabs(Math.max(1, Number.parseInt(daysInput?.value || '1', 10) || 1));
         updateTotals();
+
+        row.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50/20');
+        setTimeout(() => row.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50/20'), 1500);
+
+        requestAnimationFrame(function () {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+            if (kind === 'hotel') {
+                row.querySelector('[data-plan-hotel-city]')?.focus({ preventScroll: true });
+            }
+        });
     }
 
     function moveRowToDay(row, newDay) {
@@ -923,6 +1092,12 @@
             return;
         }
 
+        var addHotelBtn = e.target.closest('.btn-add-hotel-to-day');
+        if (addHotelBtn) {
+            addPlanItem('hotel', addHotelBtn.dataset.day);
+            return;
+        }
+
         var addInclusionBtn = e.target.closest('.btn-add-inclusion-to-day');
         if (addInclusionBtn) {
             var dayCard = addInclusionBtn.closest('[data-day-card]');
@@ -995,6 +1170,33 @@
             updateDayHoursSummary();
         }
 
+        if (e.target.matches('[data-plan-hotel-room]')) {
+            updateHotelRateSummary(e.target.closest('[data-plan-row]'));
+            updateTotals();
+        }
+
+        if (e.target.matches('[data-plan-hotel]')) {
+            var hotelRow = e.target.closest('[data-plan-row]');
+            var selectedHotelRoom = hotelRow.querySelector('[data-plan-hotel-room]');
+            if (selectedHotelRoom) {
+                selectedHotelRoom.value = '';
+            }
+            refreshHotelRoomOptions();
+        }
+
+        if (e.target.matches('[data-plan-hotel-city]')) {
+            var hotelRow = e.target.closest('[data-plan-row]');
+            var hotelSelect = hotelRow.querySelector('[data-plan-hotel]');
+            var hotelRoomSelect = hotelRow.querySelector('[data-plan-hotel-room]');
+            if (hotelSelect) {
+                hotelSelect.value = '';
+            }
+            if (hotelRoomSelect) {
+                hotelRoomSelect.value = '';
+            }
+            refreshHotelRoomOptions();
+        }
+
         if (e.target.matches('[data-plan-time]')) {
             var r = e.target.closest('[data-plan-row]');
             updateEstimatedEndTime(r);
@@ -1030,13 +1232,20 @@
 
     // Destination Checkboxes Change (Step 03)
     document.querySelectorAll('.package-country, .package-state, .package-city').forEach(function (cb) {
-        cb.addEventListener('change', refreshPlaceOptions);
+        cb.addEventListener('change', function () {
+            refreshPlaceOptions();
+            refreshHotelRoomOptions();
+        });
     });
 
     // Pricing & Duration Inputs
     basePriceInput?.addEventListener('input', updateTotals);
     document.getElementById('discount-percentage')?.addEventListener('input', updateTotals);
     document.getElementById('tax-percentage')?.addEventListener('input', updateTotals);
+    nightsInput?.addEventListener('input', function () {
+        document.querySelectorAll('[data-plan-row]').forEach(updateHotelRateSummary);
+        updateTotals();
+    });
     daysInput?.addEventListener('input', function () {
         updateDayTabsAndCards();
         updateDayHoursSummary();
@@ -1065,6 +1274,7 @@
     updateDayTabsAndCards();
     placeScheduledInclusionDetailsInPlanRows();
     refreshPlaceOptions();
+    refreshHotelRoomOptions();
     refreshInclusionOptions();
     document.querySelectorAll('[data-plan-row]').forEach(updateEstimatedEndTime);
     updateDayHoursSummary();

@@ -91,6 +91,15 @@ class TourPackage extends Model
             ->orderBy('position');
     }
 
+    public function hotelCostPerAdult(): float
+    {
+        $this->loadMissing('planItems.hotelRoom');
+
+        return $this->planItems
+            ->where('item_type', 'hotel')
+            ->sum(fn (PackagePlanItem $item): float => (float) ($item->hotelRoom?->customer_adult_price ?? 0) * (int) $this->nights);
+    }
+
     public function galleryImages(): HasMany
     {
         return $this->hasMany(TourPackageImage::class, 'tour_package_id')->orderBy('position');

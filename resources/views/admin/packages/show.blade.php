@@ -126,7 +126,34 @@
                         <h4 class="mb-3 text-sm font-bold text-slate-800">Day {{ $dayNumber }}</h4>
                         <div class="space-y-3">
                             @foreach($items as $item)
-                                @if($item->package_inclusion_id)
+                                @if($item->item_type === 'hotel')
+                                    <article class="flex gap-3 rounded-lg bg-blue-50/60 p-3">
+                                        <span class="w-16 shrink-0 pt-0.5 text-xs font-semibold text-blue-700">{{ substr((string) $item->start_time, 0, 5) }}</span>
+                                        <div class="min-w-0">
+                                            <h5 class="text-sm font-semibold text-slate-800">Hotel Check-in: {{ $item->hotelRoom?->hotel?->name ?? 'Hotel unavailable' }}</h5>
+                                            @if($item->hotelRoom)
+                                                <p class="mt-1 text-xs text-slate-500">
+                                                    {{ $item->hotelRoom->roomType?->name }} · {{ $item->hotelRoom->name }}
+                                                    @if($item->hotelRoom->hotel?->city)
+                                                        · {{ $item->hotelRoom->hotel->city->name }}
+                                                    @endif
+                                                </p>
+                                                @if($item->hotelRoom->hotel?->address)
+                                                    <p class="mt-1 text-xs text-slate-500">{{ $item->hotelRoom->hotel->address }}</p>
+                                                @endif
+                                                <p class="mt-1 text-xs text-slate-600">
+                                                    Customer rates:
+                                                    Adult ₹{{ number_format((float) $item->hotelRoom->customer_adult_price, 2) }}/night ·
+                                                    Child ₹{{ number_format((float) $item->hotelRoom->customer_child_price, 2) }}/night ·
+                                                    Extra bed ₹{{ number_format((float) $item->hotelRoom->customer_extra_bed_price, 2) }}/night
+                                                </p>
+                                                <p class="mt-1 text-xs font-semibold text-blue-700">
+                                                    Package hotel addition: ₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) $package->nights, 2) }} per adult (₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) $package->nights * 2, 2) }} for 2 adults)
+                                                </p>
+                                            @endif
+                                        </div>
+                                    </article>
+                                @elseif($item->package_inclusion_package_id)
                                     <article class="flex gap-3 rounded-lg bg-emerald-50/60 p-3">
                                         <span class="w-16 shrink-0 pt-0.5 text-xs font-semibold text-emerald-700">{{ substr((string) $item->start_time, 0, 5) }}</span>
                                         <div class="min-w-0">

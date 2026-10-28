@@ -68,18 +68,6 @@
             </div>
         </div>
         <div>
-            <p class="mb-2 text-sm font-semibold">Hotel cost *</p>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                @foreach (['adult_cost' => 'Adult cost', 'child_cost' => 'Child cost', 'extra_bed_cost' => 'Extra bed cost'] as $field => $label)
-                    <div>
-                        <label for="{{ $field }}" class="mb-1 block text-xs text-slate-500">{{ $label }}</label>
-                        <input id="{{ $field }}" name="{{ $field }}" type="number" min="0" max="99999999.99" step="0.01" value="{{ old($field, $hotel?->{$field}) }}" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                        @error($field)<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                    </div>
-                @endforeach
-            </div>
-        </div>
-        <div>
             <label for="hotel-address" class="mb-1 block text-sm font-semibold">Full hotel address *</label>
             <textarea id="hotel-address" name="address" rows="4" maxlength="2000" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">{{ old('address', $hotel?->address) }}</textarea>
             @error('address')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
