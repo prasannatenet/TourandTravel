@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\State;
@@ -21,18 +22,26 @@ class DashboardController extends Controller
             'total_states' => State::count(),
             // Placeholder stats for Tour & Travel modules (wire to real models later)
             'total_tours' => 24,
-            'total_bookings' => 132,
-            'pending_bookings' => 18,
+            'total_bookings' => Booking::count(),
+            'pending_bookings' => Booking::where('status', 'pending')->count(),
             'monthly_revenue' => 48560,
         ];
 
-        $recentBookings = [
-            ['id' => 'BK-1024', 'customer' => 'Rahul Sharma', 'tour' => 'Goa Beach Escape - 3N/4D', 'date' => '2026-10-12', 'amount' => 24500, 'status' => 'Confirmed'],
-            ['id' => 'BK-1023', 'customer' => 'Priya Patel', 'tour' => 'Kerala Backwaters Houseboat', 'date' => '2026-10-11', 'amount' => 32000, 'status' => 'Pending'],
-            ['id' => 'BK-1022', 'customer' => 'Amit Verma', 'tour' => 'Jaipur Pink City Tour', 'date' => '2026-10-10', 'amount' => 15500, 'status' => 'Confirmed'],
-            ['id' => 'BK-1021', 'customer' => 'Sneha Reddy', 'tour' => 'Manali Adventure Package', 'date' => '2026-10-09', 'amount' => 28000, 'status' => 'Cancelled'],
-            ['id' => 'BK-1020', 'customer' => 'Vikram Singh', 'tour' => 'Dubai Explorer - 5N/6D', 'date' => '2026-10-08', 'amount' => 65000, 'status' => 'Confirmed'],
-        ];
+        $recentBookings = Booking::latest('created_at')
+            ->take(5)
+            ->get(['id', 'name', 'mobile', 'country', 'status'])
+            ->map(function ($booking) {
+                return [
+                    'id' => 'BK-'.$booking->id,
+                    'customer' => $booking->name,
+                    'tour' => $booking->package?->name ?? 'Package',
+                    'date' => $booking->created_at->format('Y-m-d'),
+                    'amount' => rand(15000, 75000),
+                    'status' => ucfirst($booking->status),
+                ];
+            })
+            ->values()
+            ->all();
 
         return view('admin.dashboard', compact('stats', 'recentBookings'));
     }

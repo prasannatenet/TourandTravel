@@ -25,6 +25,9 @@ Route::get('/', function () {
 Route::get('/packages', [PackageFrontendController::class, 'index'])->name('packages.index');
 Route::get('/packages/{slug}', [PackageFrontendController::class, 'show'])->name('packages.show');
 
+Route::get('/packages/{package}/book', [PackageFrontendController::class, 'book'])->name('packages.book');
+Route::post('/packages/{package}/book', [PackageFrontendController::class, 'storeBook'])->name('packages.book.store');
+
 Route::prefix('hotel')->name('hotel.')->group(function (): void {
     Route::get('login', [HotelAuthController::class, 'showLogin'])->name('login');
     Route::post('login', [HotelAuthController::class, 'login'])->middleware('throttle:5,1')->name('login.post');

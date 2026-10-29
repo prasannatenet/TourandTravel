@@ -8,6 +8,7 @@
 @endif
 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
 <p class="text-sm text-slate-500">{{ $cityPlaceCountsTotal }} city{{ $cityPlaceCountsTotal != 1 ? 's' : '' }} in destination</p>
+<a href="{{ route('admin.places.create') }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg">+ Add Place</a>
 </div>
 <form method="GET" action="{{ route('admin.places.index') }}" id="placeFilterForm" class="bg-white rounded-2xl shadow-sm p-4 mb-4">
 <div class="flex flex-wrap items-end gap-3">

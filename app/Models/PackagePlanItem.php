@@ -16,6 +16,7 @@ class PackagePlanItem extends Model
         'package_inclusion_package_id',
         'item_type',
         'day_number',
+        'nights',
         'start_time',
         'additional_price',
         'show_charge_button',
@@ -26,6 +27,7 @@ class PackagePlanItem extends Model
     {
         return [
             'day_number' => 'integer',
+            'nights' => 'integer',
             'additional_price' => 'decimal:2',
             'position' => 'integer',
             'show_charge_button' => 'boolean',

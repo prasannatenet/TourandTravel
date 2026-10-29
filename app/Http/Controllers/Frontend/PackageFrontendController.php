@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\CityPlace;
 use App\Models\TourPackage;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -28,22 +30,18 @@ class PackageFrontendController extends Controller
 
         $packages = TourPackage::where('is_active', true)
             ->with(['destinations.destination', 'galleryImages'])
-            ->when($validated['search'] ?? null, fn ($q) => $q->where('name', 'like', '%'.($validated['search'] ?? null).'%'))
-            ->when($validated['destination'] ?? null, fn ($q) => $q->whereHas('destinations', fn ($q) => $q->where('destination_id', $validated['destination'] ?? null)))
-            ->when($validated['duration'] ?? null, fn ($q) => $q->where('days', $validated['duration'] ?? null))
-            ->when($validated['min_price'] ?? null, fn ($q) => $q->where('base_price', '>=', $validated['min_price'] ?? null))
-            ->when($validated['max_price'] ?? null, fn ($q) => $q->where('base_price', '<=', $validated['max_price'] ?? null))
+            ->when($validated['search'] ?? null, fn ($query) => $query->where('name', 'like', '%'.($validated['search'] ?? null).'%'))
+            ->when($validated['destination'] ?? null, fn ($query) => $query->whereHas('destinations', fn ($query) => $query->where('destination_id', $validated['destination'] ?? null)))
+            ->when($validated['duration'] ?? null, fn ($query) => $query->where('days', $validated['duration'] ?? null))
+            ->when($validated['min_price'] ?? null, fn ($query) => $query->where('base_price', '>=', $validated['min_price'] ?? null))
+            ->when($validated['max_price'] ?? null, fn ($query) => $query->where('base_price', '<=', $validated['max_price'] ?? null))
             ->latest()
             ->paginate(12)
             ->withQueryString();
 
         $destinations = CityPlace::with(['city.state.country'])->orderBy('name')->get();
 
-        return view('packages.index', compact(
-            'packages',
-            'destinations',
-            'validated'
-        ));
+        return view('packages.index', compact('packages', 'destinations', 'validated'));
     }
 
     public function show(string $slug): View
@@ -79,20 +77,16 @@ class PackageFrontendController extends Controller
         });
 
         $itinerary = $package->planItems->groupBy('day_number');
-
-        // Collect all city IDs that appear in place-type plan items and destinations
         $planCityIds = $package->planItems
             ->filter(fn ($item) => $item->city_place_id && $item->place)
             ->map(fn ($item) => $item->place->city_id)
             ->unique()
             ->values();
-
         $destCityIds = $package->destinations
-            ->map(fn ($d) => $d->destination?->city_id)
+            ->map(fn ($destination) => $destination->destination?->city_id)
             ->filter()
             ->unique()
             ->values();
-
         $allRelevantCityIds = $planCityIds->merge($destCityIds)->unique()->values();
 
         $placesQuery = CityPlace::with('city');
@@ -100,7 +94,6 @@ class PackageFrontendController extends Controller
             $placesQuery->whereIn('city_id', $allRelevantCityIds);
         }
         $placesCollection = $placesQuery->get();
-
         if ($placesCollection->count() <= 1) {
             $placesCollection = CityPlace::with('city')->get();
         }
@@ -113,7 +106,7 @@ class PackageFrontendController extends Controller
             'description' => $place->place_description ?? $place->description ?? '',
             'price' => (float) $place->price_per_person,
             'primary_image' => $place->primary_image ? asset('storage/'.$place->primary_image) : null,
-            'secondary_images' => collect($place->secondary_images ?? [])->map(fn (string $p) => asset('storage/'.$p))->values()->all(),
+            'secondary_images' => collect($place->secondary_images ?? [])->map(fn (string $path) => asset('storage/'.$path))->values()->all(),
         ])->values()->all();
 
         $subtotal = (float) $package->base_price + $package->hotelCostPerAdult() + $package->planItems->sum(function ($item): float {
@@ -122,14 +115,57 @@ class PackageFrontendController extends Controller
         $discountedTotal = $subtotal * (1 - ((float) $package->discount_percentage / 100));
         $estimatedTotal = $discountedTotal * (1 + ((float) $package->tax_percentage / 100));
 
-        return view('packages.show', compact(
-            'package',
-            'inclusionDetails',
-            'itinerary',
-            'subtotal',
-            'discountedTotal',
-            'estimatedTotal',
-            'swappablePlaces'
-        ));
+        return view('packages.show', compact('package', 'inclusionDetails', 'itinerary', 'subtotal', 'discountedTotal', 'estimatedTotal', 'swappablePlaces'));
+    }
+
+    public function book(string $slug): View
+    {
+        $package = TourPackage::where('slug', $slug)->where('is_active', true)->firstOrFail();
+        $estimatedTotal = $this->calculateBookingTotal($package, 1, 0);
+
+        return view('packages.book', compact('package', 'estimatedTotal'));
+    }
+
+    public function storeBook(Request $request, string $slug): View|RedirectResponse
+    {
+        $package = TourPackage::where('slug', $slug)->where('is_active', true)->firstOrFail();
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'mobile' => ['required', 'string', 'max:30'],
+            'adult_count' => ['required', 'integer', 'min:1', 'max:99'],
+            'child_count' => ['required', 'integer', 'min:0', 'max:99'],
+            'photo_id_proof' => ['nullable', 'string', 'max:255'],
+            'country' => ['required', 'string', 'max:100'],
+        ]);
+
+        $booking = Booking::create([...$validated, 'package_id' => $package->id]);
+        $booking->load('package');
+
+        return view('packages.book-success', compact('booking'));
+    }
+
+    private function calculateBookingTotal(TourPackage $package, int $adultCount, int $childCount): float
+    {
+        $package->load('planItems.place', 'planItems.hotelRoom');
+
+        $adultPrice = (float) $package->base_price;
+        $childPrice = $package->child_price !== null ? (float) $package->child_price : $adultPrice;
+        $hotelTotal = $package->planItems->where('item_type', 'hotel')->sum(function ($item) use ($adultCount, $childCount): float {
+            $nights = (int) ($item->nights ?? 1);
+            $adultRate = (float) ($item->hotelRoom?->customer_adult_price ?? 0);
+            $childRate = $item->hotelRoom?->customer_child_price !== null
+                ? (float) $item->hotelRoom->customer_child_price
+                : $adultRate;
+
+            return (($adultRate * $adultCount) + ($childRate * $childCount)) * $nights;
+        });
+        $placeTotal = $package->planItems->sum(function ($item) use ($adultCount, $childCount): float {
+            return (float) ($item->place?->price_per_person ?? 0) * ($adultCount + $childCount) + (float) $item->additional_price;
+        });
+        $subtotal = ($adultPrice * $adultCount) + ($childPrice * $childCount) + $hotelTotal + $placeTotal;
+        $discountedTotal = $subtotal * (1 - ((float) $package->discount_percentage / 100));
+
+        return $discountedTotal * (1 + ((float) $package->tax_percentage / 100));
     }
 }

@@ -97,7 +97,7 @@ class TourPackage extends Model
 
         return $this->planItems
             ->where('item_type', 'hotel')
-            ->sum(fn (PackagePlanItem $item): float => (float) ($item->hotelRoom?->customer_adult_price ?? 0) * (int) $this->nights);
+            ->sum(fn (PackagePlanItem $item): float => (float) ($item->hotelRoom?->customer_adult_price ?? 0) * (int) ($item->nights ?? 1));
     }
 
     public function galleryImages(): HasMany

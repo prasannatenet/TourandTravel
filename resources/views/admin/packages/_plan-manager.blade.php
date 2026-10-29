@@ -43,6 +43,7 @@
         $savedPlanItems = $package->planItems->map(fn ($item): array => [
             'kind' => $item->item_type === 'hotel' ? 'hotel' : ($item->package_inclusion_package_id ? 'inclusion' : 'place'),
             'day_number' => $item->day_number,
+            'nights' => $item->nights,
             'start_time' => $item->start_time,
             'city_place_id' => $item->city_place_id,
             'hotel_room_id' => $item->hotel_room_id,
@@ -734,8 +735,9 @@
             var extraPrice = Number.parseFloat(row.querySelector('[data-plan-extra-price]')?.value || '0') || 0;
             var roomSelect = row.querySelector('[data-plan-hotel-room]');
             var adultRoomPrice = Number.parseFloat(roomSelect?.selectedOptions[0]?.dataset.customerAdultPrice || '0') || 0;
-            var packageNights = Number.parseInt(nightsInput?.value || '0', 10) || 0;
-            var hotelPrice = row.dataset.planKind === 'hotel' ? adultRoomPrice * packageNights : 0;
+            var hotelNightsInput = row.querySelector('[data-plan-hotel-nights]');
+            var hotelNights = Number.parseInt(hotelNightsInput?.value || '1', 10) || 1;
+            var hotelPrice = row.dataset.planKind === 'hotel' ? adultRoomPrice * hotelNights : 0;
             addedPrice += placePrice + extraPrice + hotelPrice;
         });
 
@@ -764,9 +766,10 @@
             return;
         }
 
-        var packageNights = Number.parseInt(nightsInput?.value || '0', 10) || 0;
+        var nightsInput = row.querySelector('[data-plan-hotel-nights]');
+        var hotelNights = Number.parseInt(nightsInput?.value || '1', 10) || 1;
         var adultPrice = Number(option.dataset.customerAdultPrice || 0);
-        var adultPackagePrice = adultPrice * packageNights;
+        var adultPackagePrice = adultPrice * hotelNights;
         [
             ['adult', option.dataset.customerAdultPrice],
             ['child', option.dataset.customerChildPrice],
@@ -786,7 +789,7 @@
         packagePrice.textContent = 'Included in adult package price: ₹' + adultPackagePrice.toLocaleString('en-IN', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
-        }) + ' per adult for ' + packageNights + ' nights (₹' + (adultPackagePrice * 2).toLocaleString('en-IN', {
+        }) + ' per adult for ' + hotelNights + ' night' + (hotelNights === 1 ? '' : 's') + ' (₹' + (adultPackagePrice * 2).toLocaleString('en-IN', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         }) + ' for 2 adults).';
@@ -1218,6 +1221,13 @@
 
     daysContainer.addEventListener('input', function (e) {
         if (e.target.matches('[data-plan-extra-price]')) {
+            updateTotals();
+        }
+        if (e.target.matches('[data-plan-hotel-nights]')) {
+            var hotelRow = e.target.closest('[data-plan-row]');
+            if (hotelRow) {
+                updateHotelRateSummary(hotelRow);
+            }
             updateTotals();
         }
     });

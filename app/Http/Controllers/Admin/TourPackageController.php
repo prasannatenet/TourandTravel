@@ -263,9 +263,10 @@ class TourPackageController extends Controller
             'inclusions.*.remove_custom_image_one' => ['sometimes', 'boolean'],
             'inclusions.*.remove_custom_image_two' => ['sometimes', 'boolean'],
             'plan_items' => ['nullable', 'array', 'max:100'],
-            'plan_items.*' => ['array:kind,day_number,start_time,city_place_id,hotel_room_id,package_inclusion_item_key,additional_price,show_charge_button'],
+            'plan_items.*' => ['array:kind,day_number,nights,start_time,city_place_id,hotel_room_id,package_inclusion_item_key,additional_price,show_charge_button'],
             'plan_items.*.kind' => ['required', 'string', 'in:place,inclusion,hotel'],
             'plan_items.*.day_number' => ['required', 'integer', 'min:1', 'max:99'],
+            'plan_items.*.nights' => ['nullable', 'integer', 'min:1', 'max:99'],
             'plan_items.*.start_time' => ['required', 'date_format:H:i'],
             'plan_items.*.city_place_id' => ['nullable', 'integer', 'exists:city_places,id'],
             'plan_items.*.hotel_room_id' => ['nullable', 'integer', 'exists:hotel_rooms,id'],
@@ -375,6 +376,9 @@ class TourPackageController extends Controller
                     ->all();
 
                 foreach ($validated['plan_items'] as $index => $planItem) {
+                    if (($planItem['kind'] ?? null) === 'hotel' && empty($planItem['nights'])) {
+                        $validator->errors()->add("plan_items.{$index}.nights", 'Enter the number of nights stayed at this hotel.');
+                    }
                     if (($planItem['kind'] ?? null) === 'hotel' && ! empty($planItem['hotel_room_id']) && ! in_array((int) $planItem['hotel_room_id'], $validHotelRoomIds, true)) {
                         $validator->errors()->add("plan_items.{$index}.hotel_room_id", 'Choose a room with customer rates from one of the selected destination cities.');
                     }
@@ -439,6 +443,7 @@ class TourPackageController extends Controller
                 'package_inclusion_package_id' => $isInclusion ? $inclusionItemIds[$item['package_inclusion_item_key']] : null,
                 'item_type' => $kind,
                 'day_number' => $item['day_number'],
+                'nights' => $isHotel ? (int) max(1, $item['nights'] ?? 1) : null,
                 'start_time' => $item['start_time'],
                 'additional_price' => $isInclusion || $isHotel ? 0 : ($item['additional_price'] ?? 0),
                 'show_charge_button' => $isInclusion || $isHotel ? false : (bool) ($item['show_charge_button'] ?? false),

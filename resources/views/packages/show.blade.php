@@ -977,7 +977,7 @@
                                                         <span class="rounded-lg bg-blue-50 px-2.5 py-1 font-semibold text-blue-800">₹{{ number_format((float) $item->hotelRoom->customer_child_price, 2) }} per child/night</span>
                                                         <span class="rounded-lg bg-blue-50 px-2.5 py-1 font-semibold text-blue-800">₹{{ number_format((float) $item->hotelRoom->customer_extra_bed_price, 2) }} per extra bed/night</span>
                                                     </div>
-                                                    <p class="mt-1 text-[11px] font-semibold text-blue-800">₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) $package->nights, 2) }} per adult for {{ $package->nights }} nights is included in the package price (₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) $package->nights * 2, 2) }} for 2 adults).</p>
+                                                    <p class="mt-1 text-[11px] font-semibold text-blue-800">₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) ($item->nights ?? 1), 2) }} per adult for {{ (int) ($item->nights ?? 1) }} night{{ (int) ($item->nights ?? 1) > 1 ? 's' : '' }} is included in the package price (₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) ($item->nights ?? 1) * 2, 2) }} for 2 adults).</p>
                                                 @endif
 
                                                 {{-- Customization Status Indicator --}}
@@ -1221,9 +1221,9 @@
 
                     {{-- Primary Booking Buttons --}}
                     <div class="p-5 space-y-3">
-                        <a href="#booking-section"
+                        <a href="{{ route('packages.book', $package->slug) }}"
                            class="mmt-btn-primary w-full text-center cursor-pointer"
-                           onclick="document.getElementById('booking-section')?.scrollIntoView({behavior:'smooth'}); return false;">
+                           onclick="event.preventDefault(); window.location.href='{{ route('packages.book', $package->slug) }}'; return false;">
                             PROCEED TO BOOK
                             <i class="fa-solid fa-arrow-right"></i>
                         </a>

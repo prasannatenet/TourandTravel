@@ -148,7 +148,7 @@
                                                     Extra bed ₹{{ number_format((float) $item->hotelRoom->customer_extra_bed_price, 2) }}/night
                                                 </p>
                                                 <p class="mt-1 text-xs font-semibold text-blue-700">
-                                                    Package hotel addition: ₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) $package->nights, 2) }} per adult (₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) $package->nights * 2, 2) }} for 2 adults)
+                                                    Package hotel addition: ₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) ($item->nights ?? 1), 2) }} per adult (₹{{ number_format((float) $item->hotelRoom->customer_adult_price * (int) ($item->nights ?? 1) * 2, 2) }} for 2 adults)
                                                 </p>
                                             @endif
                                         </div>

@@ -113,7 +113,7 @@
             @php($selectedHotelRoom = $hotelRooms->firstWhere('id', $planItem['hotel_room_id'] ?? null))
             @php($selectedHotel = $selectedHotelRoom?->hotel)
             <div class="min-w-0 rounded-xl border border-blue-100 bg-blue-50/40 p-4 lg:col-span-3">
-                <div class="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-3">
+                <div class="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-4">
                     <div class="min-w-0">
                         <label for="plan-hotel-city-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">
                             Destination City <span class="text-red-500">*</span>
@@ -122,8 +122,7 @@
                             <option value="">Choose a city...</option>
                             @foreach($hotelCities as $hotelCity)
                                 <option value="{{ $hotelCity->id }}"
-                                    data-city-id="{{ $hotelCity->id }}"
-                                    @selected((string) ($selectedHotelRoom?->hotel?->city_id ?? '') === (string) $hotelCity->id)>
+                                    data-city-id="{{ $hotelCity->id }}" @selected((string) ($selectedHotelRoom?->hotel?->city_id ?? '') === (string) $hotelCity->id)>
                                     {{ $hotelCity->name }}
                                 </option>
                             @endforeach
@@ -166,18 +165,26 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="min-w-0">
+                        <label for="plan-hotel-nights-{{ $rowIndex }}" class="mb-1 block text-xs font-semibold text-slate-700">
+                            Hotel Stay (Nights) <span class="text-red-500">*</span>
+                        </label>
+                        <input id="plan-hotel-nights-{{ $rowIndex }}" type="number" name="plan_items[{{ $rowIndex }}][nights]" value="{{ $planItem['nights'] ?? 1 }}" min="1" max="99" step="1" data-plan-hotel-nights class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                        <p class="mt-1 text-[11px] text-slate-400">Nights stayed at this hotel</p>
+                    </div>
                 </div>
                 <div data-hotel-rate-summary class="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+                    @php($hotelNights = (int) ($planItem['nights'] ?? 1))
                     @if($selectedHotelRoom && $selectedHotelRoom->customer_adult_price !== null && $selectedHotelRoom->customer_child_price !== null && $selectedHotelRoom->customer_extra_bed_price !== null)
                         <span class="rounded-lg bg-white px-2.5 py-1 font-semibold text-slate-700">₹{{ number_format((float) $selectedHotelRoom->customer_adult_price, 2) }} per adult/night</span>
                         <span class="rounded-lg bg-white px-2.5 py-1 font-semibold text-slate-700">₹{{ number_format((float) $selectedHotelRoom->customer_child_price, 2) }} per child/night</span>
                         <span class="rounded-lg bg-white px-2.5 py-1 font-semibold text-slate-700">₹{{ number_format((float) $selectedHotelRoom->customer_extra_bed_price, 2) }} per extra bed/night</span>
-                        <span class="w-full font-semibold text-blue-800">Included in adult package price: ₹{{ number_format((float) $selectedHotelRoom->customer_adult_price * $packageNights, 2) }} per adult for {{ $packageNights }} nights (₹{{ number_format((float) $selectedHotelRoom->customer_adult_price * $packageNights * 2, 2) }} for 2 adults).</span>
+                        <span class="w-full font-semibold text-blue-800">Included in adult package price: ₹{{ number_format((float) $selectedHotelRoom->customer_adult_price * $hotelNights, 2) }} per adult for {{ $hotelNights }} night{{ $hotelNights > 1 ? 's' : '' }} (₹{{ number_format((float) $selectedHotelRoom->customer_adult_price * $hotelNights * 2, 2) }} for 2 adults).</span>
                     @else
                         Choose a city, hotel, and room with customer rates.
                     @endif
                 </div>
-                <p class="mt-1 text-[11px] text-slate-400">The adult room rate per night is added to the package adult price for each package night. Child and extra-bed rates are shown for reference.</p>
+                <p class="mt-1 text-[11px] text-slate-400">The adult room rate per night is added to the package adult price for each night stayed at this hotel. Child and extra-bed rates are shown for reference.</p>
             </div>
         @endif
 

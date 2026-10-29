@@ -21,6 +21,9 @@ class CityPlace extends Model
         'visit_duration_hours',
         'best_time_to_visit',
         'price_per_person',
+        'price_indian',
+        'price_foreigner',
+        'price_student',
         'note',
     ];
 
