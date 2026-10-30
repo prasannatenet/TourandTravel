@@ -55,7 +55,7 @@
                     </td>
                     <td class="px-6 py-3 text-slate-500 text-sm">{{ $booking->created_at?->format('M d, Y') ?? '' }}</td>
                     <td class="px-6 py-3">
-                        <a href="javascript:void(0)" class="text-xs text-blue-600 hover underline">View</a>
+                        <a href="{{ route('admin.bookings.show', $booking->id) }}" class="text-xs text-blue-600 hover:underline">View</a>
                     </td>
                 </tr>
                 @endforeach

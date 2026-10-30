@@ -10,9 +10,13 @@ class BookingsController extends Controller
 {
     public function index(): View
     {
-        $bookings = Booking::latest('created_at')
-            ->paginate(20);
+        $bookings = Booking::latest('created_at')->paginate(20);
 
         return view('admin.bookings', compact('bookings'));
+    }
+
+    public function show(Booking $booking): View
+    {
+        return view('admin.bookings.show', compact('booking'));
     }
 }

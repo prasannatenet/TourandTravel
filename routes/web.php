@@ -73,6 +73,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->name('hotels.rooms.customer-prices.update');
         Route::resource('hotels', HotelController::class);
         Route::get('bookings', [BookingsController::class, 'index'])->name('bookings.index');
+Route::get('bookings/{booking}', [BookingsController::class, 'show'])->name('bookings.show');
         Route::resource('inclusions', PackageInclusionController::class)->except(['show']);
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
     });
