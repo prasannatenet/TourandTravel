@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\BookingsController;
 use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CityPlaceController;
 use App\Http\Controllers\Admin\CountryController;
@@ -71,6 +72,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::put('hotels/{hotel}/rooms/{room}/customer-prices', [HotelRoomCustomerPriceController::class, 'update'])
             ->name('hotels.rooms.customer-prices.update');
         Route::resource('hotels', HotelController::class);
+        Route::get('bookings', [BookingsController::class, 'index'])->name('bookings.index');
         Route::resource('inclusions', PackageInclusionController::class)->except(['show']);
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
     });

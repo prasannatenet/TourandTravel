@@ -59,9 +59,9 @@
                 <i class="fa-solid fa-map-location-dot w-5 text-center"></i> Tours
                 <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">Soon</span>
             </a>
-            <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
+            <a href="{{ route('admin.bookings.index') }}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 {{ request()->routeIs('admin.bookings') ? 'bg-blue-800 text-white' : '' }}">
                 <i class="fa-solid fa-ticket w-5 text-center"></i> Bookings
-                <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">Soon</span>
+                {{-- <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">{{ request()->routeIs('admin.bookings') ? '' : 'Soon' }}</span> --}}
             </a>
             <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
                 <i class="fa-solid fa-users w-5 text-center"></i> Customers
@@ -114,6 +114,7 @@
                 <a href="{{ route('admin.inclusions.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.inclusions.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Package Inclusions</a>
                 <a href="{{ route('admin.packages.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.packages.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Packages</a>
                 <a href="{{ route('admin.hotels.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.hotels.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Hotels</a>
+            <a href="{{ route('admin.bookings.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.bookings.index') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Bookings</a>
                 <a href="{{ route('admin.countries.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Country</a>
                 <a href="{{ route('admin.states.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">State</a>
                 <a href="{{ route('admin.cities.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">City</a>

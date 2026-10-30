@@ -35,7 +35,7 @@ class DashboardController extends Controller
                     'id' => 'BK-'.$booking->id,
                     'customer' => $booking->name,
                     'tour' => $booking->package?->name ?? 'Package',
-                    'date' => $booking->created_at->format('Y-m-d'),
+                    'date' => $booking->created_at?->format('Y-m-d') ?? '',
                     'amount' => rand(15000, 75000),
                     'status' => ucfirst($booking->status),
                 ];
