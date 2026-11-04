@@ -10,18 +10,26 @@
 <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
     <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="font-bold text-lg">{{ $processing ? 'Bookings To Process' : 'All Bookings' }}</h2>
-        <nav class="flex flex-wrap gap-2" aria-label="Booking views">
-            <a href="{{ route('admin.bookings.index') }}" @class([
-                'rounded-lg px-4 py-2 text-sm font-semibold',
-                'bg-indigo-600 text-white' => ! $processing,
-                'bg-slate-100 text-slate-700 hover:bg-slate-200' => $processing,
-            ])>All Bookings</a>
-            <a href="{{ route('admin.bookings.processing') }}" @class([
-                'rounded-lg px-4 py-2 text-sm font-semibold',
-                'bg-indigo-600 text-white' => $processing,
-                'bg-slate-100 text-slate-700 hover:bg-slate-200' => ! $processing,
-            ])>To Process</a>
-        </nav>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <nav class="flex flex-wrap gap-2" aria-label="Booking views">
+                <a href="{{ route('admin.bookings.index') }}" @class([
+                    'rounded-lg px-4 py-2 text-sm font-semibold',
+                    'bg-indigo-600 text-white' => ! $processing,
+                    'bg-slate-100 text-slate-700 hover:bg-slate-200' => $processing,
+                ])>All Bookings</a>
+                <a href="{{ route('admin.bookings.processing') }}" @class([
+                    'rounded-lg px-4 py-2 text-sm font-semibold',
+                    'bg-indigo-600 text-white' => $processing,
+                    'bg-slate-100 text-slate-700 hover:bg-slate-200' => ! $processing,
+                ])>To Process</a>
+            </nav>
+            @unless ($processing)
+                <a href="{{ route('admin.bookings.create') }}" class="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                    <span aria-hidden="true">+</span>
+                    Add a New Booking
+                </a>
+            @endunless
+        </div>
     </div>
 
     <div class="overflow-x-auto">

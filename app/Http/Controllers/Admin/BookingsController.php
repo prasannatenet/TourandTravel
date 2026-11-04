@@ -19,8 +19,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator as ValidationValidator;
 use Illuminate\View\View;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
@@ -47,6 +49,303 @@ class BookingsController extends Controller
         return view('admin.bookings', compact('bookings', 'processing'));
     }
 
+    public function create(): View
+    {
+        $packages = TourPackage::query()
+            ->with('availabilities')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $countries = Country::query()->orderBy('name')->get();
+        $states = State::query()->with('country')->orderBy('name')->get();
+        $cities = City::query()->with('state.country')->orderBy('name')->get();
+
+        return view('admin.bookings.create', compact('packages', 'countries', 'states', 'cities'));
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        if ($request->input('package_type') === 'custom') {
+            return $this->storeCustomBooking($request);
+        }
+
+        $validated = $request->validate([
+            'package_type' => ['sometimes', 'in:existing'],
+            'package_id' => ['required', 'integer', Rule::exists('tour_packages', 'id')->where('is_active', true)],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'mobile' => ['required', 'string', 'max:30'],
+            'country' => ['required', 'string', 'max:100'],
+            'photo_id_proof' => ['nullable', 'string', 'max:255'],
+            'adult_count' => ['required', 'integer', 'min:1', 'max:99'],
+            'child_count' => ['required', 'integer', 'min:0', 'max:99'],
+            'student_count' => ['required', 'integer', 'min:0', 'lte:adult_count'],
+            'departure_date' => ['nullable', 'date'],
+            'room_count' => ['required', 'integer', 'min:1', 'max:20'],
+            'extra_bed_count' => ['required', 'integer', 'min:0', 'max:20'],
+        ]);
+
+        $package = TourPackage::query()
+            ->with(['availabilities', 'planItems.place', 'planItems.hotelRoom'])
+            ->findOrFail($validated['package_id']);
+
+        if ($package->availabilities->isNotEmpty()) {
+            $request->validate([
+                'departure_date' => [
+                    'required',
+                    'date',
+                    Rule::in($package->availabilities->map(
+                        fn ($availability): string => $availability->departure_date->format('Y-m-d'),
+                    )->all()),
+                ],
+            ]);
+        }
+
+        $itineraryItems = $this->bookingItineraryItems($package, null);
+        $hotelItems = $itineraryItems
+            ->where('item_type', 'hotel')
+            ->filter(fn (array $item): bool => $item['hotelRoom'] !== null);
+        $hotelPlanItem = $hotelItems->first();
+        $hotelRoom = $hotelPlanItem['hotelRoom'] ?? null;
+
+        if ($hotelRoom === null) {
+            $validated['extra_bed_count'] = 0;
+        } else {
+            $requiredExtraBeds = Booking::requiredExtraBedCount(
+                (int) $validated['adult_count'],
+                (int) $validated['child_count'],
+                (int) $validated['room_count'],
+            );
+            if ($requiredExtraBeds > $validated['room_count']) {
+                return back()->withErrors([
+                    'room_count' => 'There are not enough rooms for these guests, even with one extra bed per room.',
+                ])->withInput();
+            }
+            if ($validated['extra_bed_count'] < $requiredExtraBeds) {
+                return back()->withErrors([
+                    'extra_bed_count' => "At least {$requiredExtraBeds} extra bed(s) are required for the selected room count.",
+                ])->withInput();
+            }
+            if ($validated['extra_bed_count'] > $validated['room_count']) {
+                return back()->withErrors([
+                    'extra_bed_count' => 'Extra beds cannot exceed the number of rooms.',
+                ])->withInput();
+            }
+        }
+
+        $departureDate = $validated['departure_date']
+            ?? $package->availabilities->first()?->departure_date?->toDateString();
+        if ($hotelRoom !== null && $departureDate === null) {
+            return back()->withErrors([
+                'departure_date' => 'Choose a departure date before creating a booking for a package with a hotel.',
+            ])->withInput();
+        }
+
+        $checkInDate = $departureDate && $hotelPlanItem
+            ? Carbon::parse($departureDate)->addDays(max(0, (int) $hotelPlanItem['day_number'] - 1))->toDateString()
+            : $departureDate;
+        $hotelNights = $hotelItems->sum(fn (array $item): int => (int) ($item['nights'] ?? 1));
+        $checkOutDate = $checkInDate && $hotelNights > 0
+            ? Carbon::parse($checkInDate)->addDays($hotelNights)->toDateString()
+            : null;
+        $amount = $this->calculateBookingAmount(
+            $package,
+            $validated['country'],
+            (int) $validated['adult_count'],
+            (int) $validated['child_count'],
+            (int) $validated['student_count'],
+            (int) $validated['extra_bed_count'],
+            $itineraryItems,
+            null,
+        );
+
+        $booking = Booking::create([
+            'package_id' => $package->id,
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'mobile' => $validated['mobile'],
+            'country' => $validated['country'],
+            'photo_id_proof' => $validated['photo_id_proof'] ?? null,
+            'adult_count' => $validated['adult_count'],
+            'child_count' => $validated['child_count'],
+            'student_count' => $validated['student_count'],
+            'room_count' => $validated['room_count'],
+            'extra_bed_count' => $validated['extra_bed_count'],
+            'status' => 'pending',
+            'hotel_room_id' => $hotelRoom?->id,
+            'hotel_request_status' => 'pending',
+            'check_in_date' => $checkInDate,
+            'check_out_date' => $checkOutDate,
+            'amount' => $amount,
+        ]);
+
+        return redirect()->route('admin.bookings.process', $booking)
+            ->with('success', 'Booking #'.$booking->id.' was created and is ready to process.');
+    }
+
+    private function storeCustomBooking(Request $request): RedirectResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'package_type' => ['required', 'in:custom'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'mobile' => ['required', 'string', 'max:30'],
+            'country' => ['required', 'string', 'max:100'],
+            'photo_id_proof' => ['nullable', 'string', 'max:255'],
+            'adult_count' => ['required', 'integer', 'min:1', 'max:99'],
+            'child_count' => ['required', 'integer', 'min:0', 'max:99'],
+            'student_count' => ['required', 'integer', 'min:0', 'lte:adult_count'],
+            'room_count' => ['required', 'integer', 'min:1', 'max:20'],
+            'extra_bed_count' => ['required', 'integer', 'min:0', 'max:20'],
+            'custom_package_name' => ['required', 'string', 'max:120'],
+            'custom_base_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'custom_category' => ['nullable', 'string', 'max:80'],
+            'custom_tour_type' => ['required', 'in:group,private'],
+            'custom_description' => ['nullable', 'string', 'max:2000'],
+            'custom_departure_city' => ['required', 'string', 'max:100'],
+            'custom_child_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'custom_infant_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'custom_discount_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            'custom_tax_percentage' => ['required', 'numeric', 'min:0', 'max:100'],
+            'custom_departure_date' => ['required', 'date'],
+            'custom_days' => ['required', 'integer', 'min:1', 'max:99'],
+            'custom_destinations' => ['required', 'array:country,state,city'],
+            'custom_destinations.country' => ['required', 'array', 'min:1', 'max:100'],
+            'custom_destinations.country.*' => ['required', 'integer', 'distinct', 'exists:countries,id'],
+            'custom_destinations.state' => ['required', 'array', 'min:1', 'max:100'],
+            'custom_destinations.state.*' => ['required', 'integer', 'distinct', 'exists:states,id'],
+            'custom_destinations.city' => ['required', 'array', 'min:1', 'max:100'],
+            'custom_destinations.city.*' => ['required', 'integer', 'distinct', 'exists:cities,id'],
+        ]);
+        $validator->after(function (ValidationValidator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $data = $validator->getData();
+            $countryIds = array_map('intval', $data['custom_destinations']['country']);
+            $stateIds = array_map('intval', $data['custom_destinations']['state']);
+            $cityIds = array_map('intval', $data['custom_destinations']['city']);
+            $validStateIds = State::query()
+                ->whereKey($stateIds)
+                ->whereIn('country_id', $countryIds)
+                ->pluck('id')
+                ->map(fn (mixed $id): int => (int) $id)
+                ->all();
+
+            if (count($validStateIds) !== count(array_unique($stateIds))) {
+                $validator->errors()->add('custom_destinations.state', 'Choose states belonging to the selected countries.');
+            }
+
+            $validCityIds = City::query()
+                ->whereKey($cityIds)
+                ->whereIn('state_id', $validStateIds)
+                ->pluck('id')
+                ->map(fn (mixed $id): int => (int) $id)
+                ->all();
+
+            if (count($validCityIds) !== count(array_unique($cityIds))) {
+                $validator->errors()->add('custom_destinations.city', 'Choose cities belonging to the selected states.');
+            }
+        });
+        $validated = $validator->validate();
+
+        $requiredExtraBeds = Booking::requiredExtraBedCount(
+            (int) $validated['adult_count'],
+            (int) $validated['child_count'],
+            (int) $validated['room_count'],
+        );
+        if ($requiredExtraBeds > $validated['room_count']) {
+            return back()->withErrors([
+                'room_count' => 'There are not enough rooms for these guests, even with one extra bed per room.',
+            ])->withInput();
+        }
+        if ($validated['extra_bed_count'] < $requiredExtraBeds) {
+            return back()->withErrors([
+                'extra_bed_count' => "At least {$requiredExtraBeds} extra bed(s) are required for the selected room count.",
+            ])->withInput();
+        }
+        if ($validated['extra_bed_count'] > $validated['room_count']) {
+            return back()->withErrors([
+                'extra_bed_count' => 'Extra beds cannot exceed the number of rooms.',
+            ])->withInput();
+        }
+
+        $customPackage = [
+            'name' => $validated['custom_package_name'],
+            'base_price' => (float) $validated['custom_base_price'],
+            'category' => $validated['custom_category'] ?? '',
+            'tour_type' => $validated['custom_tour_type'],
+            'description' => $validated['custom_description'] ?? '',
+            'departure_city' => $validated['custom_departure_city'],
+            'child_price' => isset($validated['custom_child_price']) ? (float) $validated['custom_child_price'] : null,
+            'infant_price' => isset($validated['custom_infant_price']) ? (float) $validated['custom_infant_price'] : null,
+            'discount_percentage' => (float) $validated['custom_discount_percentage'],
+            'tax_percentage' => (float) $validated['custom_tax_percentage'],
+            'departure_date' => $validated['custom_departure_date'],
+            'destinations' => [
+                'country' => array_map('intval', $validated['custom_destinations']['country']),
+                'state' => array_map('intval', $validated['custom_destinations']['state']),
+                'city' => array_map('intval', $validated['custom_destinations']['city']),
+            ],
+        ];
+        $days = (int) $validated['custom_days'];
+
+        $booking = DB::transaction(function () use ($validated, $customPackage, $days): Booking {
+            $package = TourPackage::query()->create([
+                'name' => $customPackage['name'],
+                'category' => $customPackage['category'],
+                'tour_type' => $customPackage['tour_type'],
+                'description' => $customPackage['description'],
+                'departure_city' => $customPackage['departure_city'],
+                'base_price' => $customPackage['base_price'],
+                'child_price' => $customPackage['child_price'],
+                'infant_price' => $customPackage['infant_price'],
+                'discount_percentage' => $customPackage['discount_percentage'],
+                'tax_percentage' => $customPackage['tax_percentage'],
+                'days' => $days,
+                'nights' => max(0, $days - 1),
+                'is_active' => false,
+            ]);
+            $amount = $this->calculateBookingAmount(
+                $package,
+                $validated['country'],
+                (int) $validated['adult_count'],
+                (int) $validated['child_count'],
+                (int) $validated['student_count'],
+                (int) $validated['extra_bed_count'],
+                collect(),
+                $customPackage,
+            );
+
+            return Booking::query()->create([
+                'package_id' => $package->id,
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'mobile' => $validated['mobile'],
+                'country' => $validated['country'],
+                'photo_id_proof' => $validated['photo_id_proof'] ?? null,
+                'adult_count' => $validated['adult_count'],
+                'child_count' => $validated['child_count'],
+                'student_count' => $validated['student_count'],
+                'room_count' => $validated['room_count'],
+                'extra_bed_count' => $validated['extra_bed_count'],
+                'status' => 'pending',
+                'check_in_date' => $customPackage['departure_date'],
+                'hotel_request_status' => 'pending',
+                'amount' => $amount,
+                'itinerary_override' => [
+                    'days' => $days,
+                    'items' => [],
+                    'custom_package' => $customPackage,
+                ],
+            ]);
+        });
+
+        return redirect()->route('admin.bookings.process', $booking)
+            ->with('success', 'Custom booking #'.$booking->id.' was created and is ready for itinerary processing.');
+    }
+
     public function show(Booking $booking): View
     {
         $itineraryItems = $booking->package
@@ -64,7 +363,7 @@ class BookingsController extends Controller
         abort_if($booking->status !== 'pending', 422, 'Only pending bookings can be processed.');
         abort_if($booking->package === null, 422, 'This booking has no package itinerary.');
 
-        $packages = TourPackage::query()->orderBy('name')->get();
+        $packages = TourPackage::query()->where('is_active', true)->orderBy('name')->get();
         $packageMode = $request->query('package_mode')
             ?? (isset($booking->itinerary_override['custom_package']) ? 'custom' : 'current');
         abort_unless(in_array($packageMode, ['current', 'existing', 'custom'], true), 422, 'Choose a package option.');
@@ -209,6 +508,11 @@ class BookingsController extends Controller
             $packageMode = $validatedData['package_mode'];
             $isCustomPackage = $packageMode === 'custom';
             $isBookingPackage = $booking->package_id === $package->id;
+            if ($packageMode === 'existing' && ! $package->is_active) {
+                $validator->errors()->add('package_id', 'Choose an active package.');
+
+                return;
+            }
             if ($packageMode === 'current' && ! $isBookingPackage) {
                 $validator->errors()->add('package_id', 'The current-package option must keep the package originally booked.');
 

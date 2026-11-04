@@ -101,6 +101,8 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('hotels/{hotel}/rooms/{room}/calendar', [HotelController::class, 'roomCalendar'])->name('hotels.rooms.calendar');
         Route::get('bookings', [BookingsController::class, 'index'])->name('bookings.index');
         Route::get('bookings/processing', [BookingsController::class, 'processing'])->name('bookings.processing');
+        Route::get('bookings/create', [BookingsController::class, 'create'])->name('bookings.create');
+        Route::post('bookings', [BookingsController::class, 'store'])->name('bookings.store');
         Route::get('bookings/{booking}/process', [BookingsController::class, 'process'])->name('bookings.process');
         Route::put('bookings/{booking}/process', [BookingsController::class, 'updateProcessing'])->name('bookings.process.update');
         Route::get('bookings/{booking}', [BookingsController::class, 'show'])->name('bookings.show');

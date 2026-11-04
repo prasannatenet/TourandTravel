@@ -32,6 +32,12 @@
 
 @section('content')
 <div class="mx-auto max-w-6xl space-y-6">
+    @if (session('success'))
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800" role="status">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="rounded-2xl border border-indigo-100 bg-indigo-50 p-5 text-sm text-indigo-900">
         Changes on this page apply only to booking #{{ $booking->id }}. The booking will remain pending after saving.
     </div>
