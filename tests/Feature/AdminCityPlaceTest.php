@@ -16,6 +16,18 @@ class AdminCityPlaceTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_create_page_exposes_only_the_four_supported_place_rates(): void
+    {
+        $response = $this->actingAs($this->admin())->get(route('admin.places.create'));
+
+        $response->assertOk()
+            ->assertSee('name="price_child"', false)
+            ->assertSee('name="price_indian"', false)
+            ->assertSee('name="price_foreigner"', false)
+            ->assertSee('name="price_student"', false)
+            ->assertDontSee('name="price_per_person"', false);
+    }
+
     private function admin(): User
     {
         return User::factory()->create(['is_admin' => true]);
@@ -53,12 +65,24 @@ class AdminCityPlaceTest extends TestCase
             'secondary_images' => [UploadedFile::fake()->create('s1.jpg', 500, 'image/jpeg')],
             'visit_duration_hours' => 3.5,
             'best_time_to_visit' => 'evening',
-            'price_per_person' => 250,
+            'price_child' => 120,
+            'price_indian' => 250,
+            'price_foreigner' => 500,
+            'price_student' => 150,
             'note' => 'Carry sunscreen.',
         ]);
 
         $response->assertRedirect(route('admin.places.index'));
-        $this->assertDatabaseHas('city_places', ['name' => 'Baga Beach', 'slug' => 'baga-beach', 'best_time_to_visit' => 'evening', 'price_per_person' => 250]);
+        $this->assertDatabaseHas('city_places', [
+            'name' => 'Baga Beach',
+            'slug' => 'baga-beach',
+            'best_time_to_visit' => 'evening',
+            'price_per_person' => 250,
+            'price_child' => 120,
+            'price_indian' => 250,
+            'price_foreigner' => 500,
+            'price_student' => 150,
+        ]);
         $place = CityPlace::where('slug', 'baga-beach')->first();
         $this->assertEquals($city->id, $place->city_id);
         $this->assertCount(1, $place->secondary_images);
@@ -80,7 +104,7 @@ class AdminCityPlaceTest extends TestCase
             'primary_image' => UploadedFile::fake()->create('p.jpg', 500, 'image/jpeg'),
             'visit_duration_hours' => 2,
             'best_time_to_visit' => 'evening',
-            'price_per_person' => 100,
+            'price_child' => 100,
         ])->assertSessionHasErrors('city_id');
     }
 
@@ -100,10 +124,11 @@ class AdminCityPlaceTest extends TestCase
             'primary_image' => UploadedFile::fake()->create('p.jpg', 500, 'image/jpeg'),
             'visit_duration_hours' => 2,
             'best_time_to_visit' => 'midnight',
+            'price_child' => 100,
         ])->assertSessionHasErrors('best_time_to_visit');
     }
 
-    public function test_price_per_person_is_required_on_create(): void
+    public function test_child_price_is_required_on_create(): void
     {
         $this->actingAs($this->admin());
         $city = $this->city();
@@ -119,10 +144,10 @@ class AdminCityPlaceTest extends TestCase
             'primary_image' => UploadedFile::fake()->create('p.jpg', 500, 'image/jpeg'),
             'visit_duration_hours' => 2,
             'best_time_to_visit' => 'evening',
-        ])->assertSessionHasErrors('price_per_person');
+        ])->assertSessionHasErrors('price_child');
     }
 
-    public function test_negative_price_per_person_is_rejected(): void
+    public function test_negative_child_price_is_rejected(): void
     {
         $this->actingAs($this->admin());
         $city = $this->city();
@@ -138,8 +163,8 @@ class AdminCityPlaceTest extends TestCase
             'primary_image' => UploadedFile::fake()->create('p.jpg', 500, 'image/jpeg'),
             'visit_duration_hours' => 2,
             'best_time_to_visit' => 'evening',
-            'price_per_person' => -5,
-        ])->assertSessionHasErrors('price_per_person');
+            'price_child' => -5,
+        ])->assertSessionHasErrors('price_child');
     }
 
     public function test_admin_can_update_place_with_cascade_fields(): void
@@ -168,7 +193,10 @@ class AdminCityPlaceTest extends TestCase
             'description' => 'Updated full details.',
             'visit_duration_hours' => 3,
             'best_time_to_visit' => 'morning',
-            'price_per_person' => 350,
+            'price_child' => 200,
+            'price_indian' => 350,
+            'price_foreigner' => 600,
+            'price_student' => 250,
             'note' => 'Updated note.',
         ]);
 
@@ -178,6 +206,10 @@ class AdminCityPlaceTest extends TestCase
             'description' => 'Updated full details.',
             'best_time_to_visit' => 'morning',
             'price_per_person' => 350,
+            'price_child' => 200,
+            'price_indian' => 350,
+            'price_foreigner' => 600,
+            'price_student' => 250,
         ]);
     }
 
@@ -202,6 +234,10 @@ class AdminCityPlaceTest extends TestCase
         $response->assertSee('name="country_id"', false);
         $response->assertSee('name="state_id"', false);
         $response->assertSee('name="city_id"', false);
+        $response->assertSee('name="price_child"', false);
+        $response->assertSee('name="price_indian"', false);
+        $response->assertSee('name="price_foreigner"', false);
+        $response->assertSee('name="price_student"', false);
     }
 
     public function test_places_index_is_table_with_view_button(): void
