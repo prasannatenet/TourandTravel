@@ -8,8 +8,20 @@
 
 @section('content')
 <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="font-bold text-lg">All Bookings</h2>
+    <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 class="font-bold text-lg">{{ $processing ? 'Bookings To Process' : 'All Bookings' }}</h2>
+        <nav class="flex flex-wrap gap-2" aria-label="Booking views">
+            <a href="{{ route('admin.bookings.index') }}" @class([
+                'rounded-lg px-4 py-2 text-sm font-semibold',
+                'bg-indigo-600 text-white' => ! $processing,
+                'bg-slate-100 text-slate-700 hover:bg-slate-200' => $processing,
+            ])>All Bookings</a>
+            <a href="{{ route('admin.bookings.processing') }}" @class([
+                'rounded-lg px-4 py-2 text-sm font-semibold',
+                'bg-indigo-600 text-white' => $processing,
+                'bg-slate-100 text-slate-700 hover:bg-slate-200' => ! $processing,
+            ])>To Process</a>
+        </nav>
     </div>
 
     <div class="overflow-x-auto">
@@ -35,12 +47,12 @@
                 <tr class="hover:bg-slate-50">
                     <td class="px-6 py-3 font-semibold">{{ $booking->id }}</td>
                     <td class="px-6 py-3">{{ $booking->name }}</td>
-                    <td class="px-6 py-3">{{ $booking->package?->name ?? 'Package' }}</td>
+                    <td class="px-6 py-3">{{ $booking->itinerary_override['custom_package']['name'] ?? $booking->package?->name ?? 'Package' }}</td>
                     <td class="px-6 py-3 break-words font-bold text-slate-800">{{ $booking->email }}</td>
                     <td class="px-6 py-3 font-bold text-slate-800">{{ $booking->mobile }}</td>
                     <td class="px-6 py-3">{{ $booking->country }}</td>
-                    <td class="px-6 py-3">{{ $booking->adult_count }} adult{{ $booking->adult_count === 1 ? '' : 's' }}</td>
-                    <td class="px-6 py-3">{{ $booking->child_count }} child{{ $booking->child_count === 1 ? '' : 'ren' }}</td>
+                    <td class="px-6 py-3">{{ $booking->adult_count }} adult{{ $booking->adult_count === 1 ? '' : 's' }} ({{ $booking->student_count }} students)</td>
+                    <td class="px-6 py-3">{{ $booking->child_count }} child{{ $booking->child_count === 1 ? '' : 'ren' }} (ages 3–15)</td>
                     <td class="px-6 py-3">Rs.{{ number_format($booking->amount ?? 0) }}</td>
                     <td class="px-6 py-3">
                         @if($booking->status === 'pending')
@@ -55,6 +67,9 @@
                     </td>
                     <td class="px-6 py-3 text-slate-500 text-sm">{{ $booking->created_at?->format('M d, Y') ?? '' }}</td>
                     <td class="px-6 py-3">
+                        @if ($booking->status === 'pending' && $booking->package_id !== null)
+                            <a href="{{ route('admin.bookings.process', $booking) }}" class="mr-3 text-xs font-semibold text-indigo-600 hover:underline">Process</a>
+                        @endif
                         <a href="{{ route('admin.bookings.show', $booking->id) }}" class="text-xs text-blue-600 hover:underline">View</a>
                     </td>
                 </tr>

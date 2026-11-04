@@ -82,7 +82,7 @@
                                     data-price="{{ $place->price_per_person }}"
                                     data-duration="{{ $place->visit_duration_hours }}"
                                     @selected((string) ($planItem['city_place_id'] ?? '') === (string) $place->id)>
-                                    {{ $place->name }} &mdash; ₹{{ number_format((float) $place->price_per_person, 0) }} ({{ $place->visit_duration_hours ? $place->visit_duration_hours.' hrs' : 'duration unstated' }})
+                                    {{ $place->name }} &mdash; ₹{{ number_format((float) $place->price_per_person, 0) }} (Indian adult; {{ $place->visit_duration_hours ? $place->visit_duration_hours.' hrs' : 'duration unstated' }})
                                 </option>
                             @endforeach
                         </optgroup>

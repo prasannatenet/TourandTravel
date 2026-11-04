@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\City;
 use App\Models\Country;
 use App\Models\Hotel;
+use App\Models\HotelRoomUnavailableDate;
 use App\Models\State;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -105,6 +107,26 @@ class HotelController extends Controller
         ]);
 
         return view('admin.hotels.show', compact('hotel'));
+    }
+
+    /**
+     * Return the unavailable (booked/blocked) dates for a room so the admin
+     * hotel view can render the same calendar the hotel partner manages.
+     */
+    public function roomCalendar(Hotel $hotel, int $room): JsonResponse
+    {
+        $hotelRoom = $hotel->rooms()->findOrFail($room);
+
+        $dates = HotelRoomUnavailableDate::query()
+            ->where('hotel_room_id', $hotelRoom->id)
+            ->pluck('date')
+            ->map(fn ($date) => $date->format('Y-m-d'))
+            ->all();
+
+        return response()->json([
+            'room_id' => $hotelRoom->id,
+            'unavailable_dates' => $dates,
+        ]);
     }
 
     public function update(Request $request, Hotel $hotel): RedirectResponse

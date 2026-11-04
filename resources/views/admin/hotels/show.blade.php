@@ -101,6 +101,9 @@
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">{{ $roomType->name }}</span>
+                            <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50" onclick="openAdminRoomCalendar({{ $room->id }}, {{ json_encode($room->name) }})">
+                                Calendar
+                            </button>
                         </div>
                     </div>
                     <dl class="mt-4 grid gap-3 sm:grid-cols-3">
@@ -173,4 +176,265 @@
         <p class="mt-1 text-sm text-slate-500">Room types and rooms created by this hotel will appear here.</p>
     </div>
 @endforelse
+
+<!-- Room Calendar Modal (shared across all rooms of this hotel) -->
+<div id="admin-room-calendar-modal"
+     class="fixed inset-0 z-50 hidden"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="admin-calendar-room-name"
+     aria-hidden="true">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeAdminRoomCalendar()"></div>
+    <div class="absolute inset-0 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div id="admin-calendar-panel"
+                 class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/5 sm:max-w-lg"
+                 tabindex="-1">
+                <!-- Header -->
+                <div class="flex items-center justify-between gap-4 border-b border-slate-100 bg-slate-50 px-5 py-4">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Room Availability</p>
+                        <h3 id="admin-calendar-room-name" class="truncate text-base font-bold text-slate-900">Room Calendar</h3>
+                    </div>
+                    <button type="button" aria-label="Close calendar" class="-mr-1 shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700" onclick="closeAdminRoomCalendar()">
+                        <i class="fa-solid fa-xmark text-lg" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <!-- Calendar body -->
+                <div class="px-4 pb-4 pt-4 sm:px-5">
+                    <div class="mb-4 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1">
+                            <button type="button" id="admin-calendar-prev-month" aria-label="Previous month" class="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600">
+                                <i class="fa-solid fa-chevron-left text-sm" aria-hidden="true"></i>
+                            </button>
+                            <p id="admin-calendar-month-year" aria-live="polite" class="min-w-[8.5rem] text-center text-sm font-semibold text-slate-900">October 2026</p>
+                            <button type="button" id="admin-calendar-next-month" aria-label="Next month" class="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600">
+                                <i class="fa-solid fa-chevron-right text-sm" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <button type="button" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50" onclick="resetAdminCalendarToToday()">
+                            Today
+                        </button>
+                    </div>
+
+                    <!-- Weekday headers -->
+                    <div class="grid grid-cols-7 gap-1 pb-1 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400" aria-hidden="true">
+                        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                    </div>
+
+                    <!-- Calendar grid -->
+                    <div id="admin-calendar-grid" class="grid grid-cols-7 gap-1"></div>
+
+                    <p id="admin-calendar-status" class="mt-3 hidden text-xs font-medium" role="status" aria-live="polite"></p>
+
+                    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-3 text-[11px] font-medium text-slate-500">
+                        <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded border border-slate-200 bg-white"></span>Available</span>
+                        <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded border border-red-200 bg-red-50"></span>Booked / blocked</span>
+                        <span class="flex items-center gap-1.5"><span class="h-3 w-3 rounded border border-slate-200 bg-slate-50"></span>Past date</span>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-5 py-3">
+                    <p class="text-xs text-slate-500">Reflects the hotel partner’s calendar. Confirmed bookings and blocked dates appear here.</p>
+                    <button type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700" onclick="closeAdminRoomCalendar()">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const adminCalendarModal = document.getElementById('admin-room-calendar-modal');
+    const adminCalendarPanel = document.getElementById('admin-calendar-panel');
+    const adminCalendarGrid = document.getElementById('admin-calendar-grid');
+    const adminCalendarMonthYear = document.getElementById('admin-calendar-month-year');
+    const adminCalendarRoomName = document.getElementById('admin-calendar-room-name');
+    const adminCalendarStatus = document.getElementById('admin-calendar-status');
+    const adminCalendarPrevMonth = document.getElementById('admin-calendar-prev-month');
+    const adminCalendarNextMonth = document.getElementById('admin-calendar-next-month');
+
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+    const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    let activeRoomId = null;
+    let unavailableDates = new Set();
+    let visibleMonth = new Date();
+    let statusTimer = null;
+
+    function toDateKey(date) {
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+
+        return date.getFullYear() + '-' + month + '-' + day;
+    }
+
+    function startOfToday() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return today;
+    }
+
+    function setAdminCalendarStatus(message, type = 'error') {
+        adminCalendarStatus.textContent = message;
+        adminCalendarStatus.classList.toggle('hidden', message === '');
+        adminCalendarStatus.classList.toggle('text-red-600', type === 'error');
+        adminCalendarStatus.classList.toggle('text-emerald-600', type === 'success');
+
+        if (statusTimer !== null) {
+            window.clearTimeout(statusTimer);
+            statusTimer = null;
+        }
+
+        if (message !== '' && type === 'success') {
+            statusTimer = window.setTimeout(() => setAdminCalendarStatus(''), 4000);
+        }
+    }
+
+    function openAdminRoomCalendar(roomId, roomName) {
+        activeRoomId = roomId;
+        visibleMonth = new Date();
+
+        adminCalendarRoomName.textContent = roomName;
+        unavailableDates = new Set();
+        setAdminCalendarStatus('');
+        renderAdminCalendar();
+
+        adminCalendarModal.classList.remove('hidden');
+        adminCalendarModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('overflow-hidden');
+        adminCalendarPanel.focus({ preventScroll: true });
+
+        refreshAdminRoomAvailability(roomId);
+    }
+
+    function closeAdminRoomCalendar() {
+        adminCalendarModal.classList.add('hidden');
+        adminCalendarModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('overflow-hidden');
+        activeRoomId = null;
+        setAdminCalendarStatus('');
+    }
+
+    function refreshAdminRoomAvailability(roomId) {
+        adminCalendarGrid.classList.add('opacity-50');
+
+        fetch('{{ route('admin.hotels.rooms.calendar', ['hotel' => $hotel, 'room' => '__ROOM__']) }}'.replace('__ROOM__', roomId), {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then((response) => (response.ok ? response.json() : Promise.reject(new Error('unavailable'))))
+            .then((data) => {
+                if (activeRoomId !== roomId) {
+                    return;
+                }
+
+                unavailableDates = new Set(data.unavailable_dates || []);
+                renderAdminCalendar();
+            })
+            .catch(() => {
+                if (activeRoomId === roomId) {
+                    setAdminCalendarStatus('Live availability could not be loaded.');
+                }
+            })
+            .finally(() => adminCalendarGrid.classList.remove('opacity-50'));
+    }
+
+    function resetAdminCalendarToToday() {
+        visibleMonth = new Date();
+        renderAdminCalendar();
+    }
+
+    function shiftAdminMonth(offset) {
+        visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1);
+        renderAdminCalendar();
+    }
+
+    function renderAdminCalendar() {
+        const year = visibleMonth.getFullYear();
+        const month = visibleMonth.getMonth();
+        const firstWeekday = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPreviousMonth = new Date(year, month, 0).getDate();
+
+        adminCalendarMonthYear.textContent = monthNames[month] + ' ' + year;
+
+        const cells = [];
+
+        for (let offset = firstWeekday; offset > 0; offset--) {
+            const day = daysInPreviousMonth - offset + 1;
+            cells.push(createAdminCalendarCell(day, new Date(year, month - 1, day), true));
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            cells.push(createAdminCalendarCell(day, new Date(year, month, day), false));
+        }
+
+        for (let day = 1; cells.length < 42; day++) {
+            cells.push(createAdminCalendarCell(day, new Date(year, month + 1, day), true));
+        }
+
+        adminCalendarGrid.replaceChildren(...cells);
+    }
+
+    function createAdminCalendarCell(day, date, isOutsideMonth) {
+        const dateKey = toDateKey(date);
+        const isPast = date < startOfToday();
+        const isBlocked = unavailableDates.has(dateKey);
+
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.dataset.date = dateKey;
+        cell.textContent = String(day);
+        cell.disabled = isOutsideMonth || isPast;
+        cell.title = dateKey + (isBlocked ? ' - Booked/blocked' : ' - Available');
+        cell.setAttribute('aria-label', weekdayNames[date.getDay()] + ' ' + day + ' ' + monthNames[date.getMonth()] + ' ' + date.getFullYear()
+            + (isPast ? ', past date' : isBlocked ? ', booked' : ', available'));
+
+        const classes = [
+            'flex', 'aspect-square', 'items-center', 'justify-center', 'rounded-lg', 'text-sm', 'transition',
+            'focus:outline-none', 'focus-visible:ring-2', 'focus-visible:ring-indigo-500', 'focus-visible:ring-offset-1',
+        ];
+
+        if (isOutsideMonth) {
+            classes.push('cursor-default', 'text-slate-300');
+        } else if (isPast) {
+            classes.push('cursor-not-allowed', 'bg-slate-50', 'font-normal', 'text-slate-400');
+        } else if (isBlocked) {
+            classes.push('bg-red-50', 'font-semibold', 'text-red-600', 'ring-1', 'ring-inset', 'ring-red-200', 'hover:bg-red-100');
+        } else {
+            classes.push('font-medium', 'text-slate-700', 'hover:bg-indigo-50', 'hover:text-indigo-700');
+        }
+
+        cell.className = classes.join(' ');
+
+        return cell;
+    }
+
+    adminCalendarPrevMonth.addEventListener('click', () => shiftAdminMonth(-1));
+    adminCalendarNextMonth.addEventListener('click', () => shiftAdminMonth(1));
+
+    document.addEventListener('keydown', (event) => {
+        if (adminCalendarModal.classList.contains('hidden')) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeAdminRoomCalendar();
+        }
+
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            shiftAdminMonth(event.key === 'ArrowLeft' ? -1 : 1);
+        }
+    });
+</script>
 @endsection

@@ -21,6 +21,7 @@ class CityPlace extends Model
         'visit_duration_hours',
         'best_time_to_visit',
         'price_per_person',
+        'price_child',
         'price_indian',
         'price_foreigner',
         'price_student',
@@ -33,7 +34,28 @@ class CityPlace extends Model
             'secondary_images' => 'array',
             'visit_duration_hours' => 'decimal:1',
             'price_per_person' => 'decimal:2',
+            'price_child' => 'decimal:2',
+            'price_indian' => 'decimal:2',
+            'price_foreigner' => 'decimal:2',
+            'price_student' => 'decimal:2',
         ];
+    }
+
+    public function childPrice(): float
+    {
+        return (float) ($this->price_child ?? $this->price_per_person);
+    }
+
+    public function adultPriceForCountry(string $country): float
+    {
+        $price = $country === 'India' ? $this->price_indian : $this->price_foreigner;
+
+        return (float) ($price ?? $this->price_per_person);
+    }
+
+    public function studentPriceForCountry(string $country): float
+    {
+        return (float) ($this->price_student ?? $this->adultPriceForCountry($country));
     }
 
     protected static function booted(): void

@@ -38,7 +38,7 @@
                 <th class="text-left px-4 py-3">Place</th>
                 <th class="text-left px-4 py-3">Duration</th>
                 <th class="text-left px-4 py-3">Best Time</th>
-                <th class="text-left px-4 py-3">Price / Person</th>
+                <th class="text-left px-4 py-3">Rates (Rs.)</th>
                 <th class="text-left px-4 py-3">Actions</th>
             </tr>
             </thead>
@@ -49,7 +49,12 @@
                 <td class="px-4 py-2 font-semibold">{{ $p->name }}</td>
                 <td class="px-4 py-2 whitespace-nowrap">{{ $p->visit_duration_hours }} hrs</td>
                 <td class="px-4 py-2 capitalize"><span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full">{{ $p->best_time_to_visit }}</span></td>
-                <td class="px-4 py-2 whitespace-nowrap">Rs.{{ number_format($p->price_per_person) }}</td>
+                <td class="px-4 py-2 whitespace-nowrap text-xs">
+                    Child: {{ number_format($p->childPrice()) }}<br>
+                    Indian: {{ number_format($p->adultPriceForCountry('India')) }}<br>
+                    Foreign: {{ number_format($p->adultPriceForCountry('USA')) }}<br>
+                    Student: {{ number_format($p->studentPriceForCountry('India')) }}
+                </td>
                 <td class="px-4 py-2">
                     <div class="flex gap-1.5">
                         <a href="{{ route('admin.places.show', $p) }}" class="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">View</a>

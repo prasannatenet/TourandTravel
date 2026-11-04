@@ -954,7 +954,7 @@
                                                         <span class="plan-item-city-name">{{ $item->place->city->name }}</span>
                                                         @if($item->place->price_per_person > 0)
                                                             <span class="text-slate-400 mx-1">•</span>
-                                                            <span class="text-slate-600 font-semibold">Attraction Fee: ₹{{ number_format((float) $item->place->price_per_person, 0) }}/person</span>
+                                                            <span class="text-slate-600 font-semibold">Attraction Fee: ₹{{ number_format((float) $item->place->price_per_person, 0) }} / Indian adult</span>
                                                         @endif
                                                     </p>
                                                 @endif

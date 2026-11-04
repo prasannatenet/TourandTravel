@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Hotel Dashboard') | {{ config('app.name', 'Tour & Travel') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -30,6 +31,7 @@
             <nav class="border-t border-slate-100">
                 <div class="mx-auto flex max-w-7xl flex-wrap gap-2 px-4 py-3 sm:px-6 lg:px-8">
                     <a href="{{ route('hotel.dashboard') }}" class="rounded-lg px-3 py-2 text-sm font-semibold {{ request()->routeIs('hotel.dashboard') ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50' }}">Dashboard</a>
+                    <a href="{{ route('hotel.booking-requests.index') }}" class="rounded-lg px-3 py-2 text-sm font-semibold {{ request()->routeIs('hotel.booking-requests.*') ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50' }}">Booking Requests</a>
                     <a href="{{ route('hotel.images.index') }}" class="rounded-lg px-3 py-2 text-sm font-semibold {{ request()->routeIs('hotel.images.*') ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50' }}">Hotel Photos</a>
                     <a href="{{ route('hotel.room-types.index') }}" class="rounded-lg px-3 py-2 text-sm font-semibold {{ request()->routeIs('hotel.room-types.*') ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50' }}">Room Types</a>
                     <a href="{{ route('hotel.rooms.index') }}" class="rounded-lg px-3 py-2 text-sm font-semibold {{ request()->routeIs('hotel.rooms.*') ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50' }}">Rooms</a>

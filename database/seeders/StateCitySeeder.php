@@ -6,6 +6,7 @@ use App\Models\City;
 use App\Models\Country;
 use App\Models\State;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 /**
  * Seeds Indian states and their cities for the tour and travel application.
@@ -88,9 +89,11 @@ class StateCitySeeder extends Seeder
                         'primary_image' => 'x.jpg',
                         'secondary_images' => [],
                         'short_description' => $description,
+                        'slug' => Str::slug($cityName),
                     ]
                 );
             }
+
         }
     }
 }

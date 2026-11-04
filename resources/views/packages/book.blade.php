@@ -11,8 +11,16 @@
             'nights' => (int) ($item->nights ?? 1),
             'adult' => (float) ($item->hotelRoom?->customer_adult_price ?? 0),
             'child' => (float) ($item->hotelRoom?->customer_child_price ?? $item->hotelRoom?->customer_adult_price ?? 0),
+            'extraBed' => (float) ($item->hotelRoom?->customer_extra_bed_price ?? 0),
         ])->values()->all(),
-        'places' => (float) $package->planItems->sum(fn ($item): float => (float) ($item->place?->price_per_person ?? 0)),
+        'hasHotel' => $package->planItems->contains(fn ($item): bool => $item->item_type === 'hotel' && $item->hotel_room_id !== null),
+        'places' => $package->planItems->map(fn ($item): array => [
+            'indian' => $item->place?->adultPriceForCountry('India') ?? 0,
+            'foreigner' => $item->place?->adultPriceForCountry('USA') ?? 0,
+            'child' => $item->place?->childPrice() ?? 0,
+            'studentIndian' => $item->place?->studentPriceForCountry('India') ?? 0,
+            'studentForeigner' => $item->place?->studentPriceForCountry('USA') ?? 0,
+        ])->values()->all(),
         'fixed' => (float) $package->planItems->sum(fn ($item): float => (float) $item->additional_price),
         'discount' => (float) $package->discount_percentage,
         'tax' => (float) $package->tax_percentage,
@@ -47,6 +55,18 @@
 
                     <form action="{{ route('packages.book.store', $package->slug) }}" method="POST" class="space-y-6">
                         @csrf
+                        @if ($package->availabilities->isNotEmpty())
+                            <div class="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 sm:p-5">
+                                <label for="departure_date" class="mb-2 block text-sm font-extrabold text-indigo-950">Package departure date <span class="text-red-500">*</span></label>
+                                <select id="departure_date" name="departure_date" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium">
+                                    <option value="">Choose a departure date</option>
+                                    @foreach ($package->availabilities as $availability)
+                                        <option value="{{ $availability->departure_date->format('Y-m-d') }}" @selected(old('departure_date') === $availability->departure_date->format('Y-m-d'))>{{ $availability->departure_date->format('M d, Y') }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-1 text-xs text-slate-500">Hotel dates follow the package itinerary for this departure.</p>
+                            </div>
+                        @endif
                         <div>
                             <h2 class="text-lg font-extrabold text-slate-900">Your contact details</h2>
                             <p class="mt-1 text-sm text-slate-500">We will use these details only to follow up on your booking.</p>
@@ -55,19 +75,36 @@
                         <div class="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 sm:p-5">
                             <div class="mb-4">
                                 <h3 class="text-sm font-extrabold text-indigo-950">Who is travelling?</h3>
-                                <p class="mt-1 text-xs text-indigo-700">Children are guests aged 0–12 years.</p>
+                                <p class="mt-1 text-xs text-indigo-700">Children are guests aged 3–15 years. Students are included in the adult count.</p>
                             </div>
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <label for="adult_count" class="mb-2 block text-sm font-bold text-slate-700">Adults <span class="text-rose-500">*</span></label>
-                                    <input type="number" name="adult_count" id="adult_count" value="{{ old('adult_count', 1) }}" min="1" max="99" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
+                                    <input type="number" name="adult_count" id="adult_count" value="{{ old('adult_count', 2) }}" min="1" max="99" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
                                 </div>
                                 <div>
-                                    <label for="child_count" class="mb-2 block text-sm font-bold text-slate-700">Children <span class="font-normal text-slate-400">(0–12 years)</span></label>
-                                    <input type="number" name="child_count" id="child_count" value="{{ old('child_count', 0) }}" min="0" max="99" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
+                                    <label for="child_count" class="mb-2 block text-sm font-bold text-slate-700">Children <span class="font-normal text-slate-400">(3–15 years)</span></label>
+                                    <input type="number" name="child_count" id="child_count" value="{{ old('child_count', 1) }}" min="0" max="99" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
+                                </div>
+                                <div>
+                                    <label for="student_count" class="mb-2 block text-sm font-bold text-slate-700">Students</label>
+                                    <input type="number" name="student_count" id="student_count" value="{{ old('student_count', 0) }}" min="0" max="99" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
                                 </div>
                             </div>
                         </div>
+
+                        @if ($pricingConfig['hasHotel'])
+                            <div class="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 sm:p-5">
+                                <h3 class="text-sm font-extrabold text-indigo-950">Hotel room plan</h3>
+                                <p class="mt-1 text-xs text-slate-600">Each room includes 2 adults and 1 child. Extra beds are charged per bed per night when your selected room count needs them.</p>
+                                <p id="room-summary" class="mt-3 font-semibold text-indigo-800"></p>
+                                <label for="room_count" class="mt-4 block text-sm font-semibold text-slate-700">Rooms requested</label>
+                                <input type="number" id="room_count" name="room_count" min="1" max="20" value="{{ old('room_count', $suggestedRoomCount) }}" data-user-selected="{{ old('room_count') !== null ? 'true' : 'false' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium">
+                                <label for="extra_bed_count" class="mt-4 block text-sm font-semibold text-slate-700">Extra beds</label>
+                                <input type="number" id="extra_bed_count" name="extra_bed_count" min="0" max="20" value="{{ old('extra_bed_count', 0) }}" data-user-selected="{{ old('extra_bed_count') !== null ? 'true' : 'false' }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium">
+                                <p id="extra-bed-summary" class="mt-2 text-xs text-slate-600"></p>
+                            </div>
+                        @endif
 
                         <div class="grid gap-5 sm:grid-cols-2">
                             <div>
@@ -122,7 +159,7 @@
                         <span class="text-sm font-semibold text-indigo-900">Estimated total</span>
                         <span id="estimated-total" class="text-xl font-black text-indigo-700">₹{{ number_format((float) $estimatedTotal, 0) }}</span>
                     </div>
-                    <p id="guest-summary" class="mt-2 text-right text-xs text-slate-500">1 adult · 0 children</p>
+                    <p id="guest-summary" class="mt-2 text-right text-xs text-slate-500">2 adults · 1 child</p>
                     <p class="mt-4 text-sm leading-6 text-slate-500">Ready to explore? Submit your details and we will help you plan the next steps.</p>
                 </div>
             </aside>
@@ -136,29 +173,84 @@
     const bookingPricing = @json($pricingConfig);
     const adultCountInput = document.getElementById('adult_count');
     const childCountInput = document.getElementById('child_count');
+    const studentCountInput = document.getElementById('student_count');
+    const countryInput = document.getElementById('country');
     const estimatedTotal = document.getElementById('estimated-total');
     const guestSummary = document.getElementById('guest-summary');
+    const roomCountInput = document.getElementById('room_count');
+    const extraBedCountInput = document.getElementById('extra_bed_count');
+    const roomSummary = document.getElementById('room-summary');
+    const extraBedSummary = document.getElementById('extra-bed-summary');
     const currency = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 
     function updateBookingTotal() {
         const adults = Math.max(1, Number(adultCountInput.value) || 1);
         const children = Math.max(0, Number(childCountInput.value) || 0);
+        const students = Math.min(adults, Math.max(0, Number(studentCountInput.value) || 0));
+        studentCountInput.max = adults;
+        if (Number(studentCountInput.value) > adults) {
+            studentCountInput.value = adults;
+        }
+        const country = countryInput.value === 'India' ? 'India' : 'Foreigner';
+        const suggestedRooms = Math.max(1, Math.ceil(adults / 2), children, Math.ceil((adults + children) / 3));
+        if (roomCountInput && roomCountInput.dataset.userSelected !== 'true') {
+            roomCountInput.value = suggestedRooms;
+        }
+        const rooms = Math.max(1, Number(roomCountInput?.value) || suggestedRooms);
+        const requiredExtraBeds = Math.max(0, adults - (rooms * 2), children - rooms, adults + children - (rooms * 3));
+        let extraBeds = requiredExtraBeds;
+        if (roomCountInput && extraBedCountInput) {
+            if (extraBedCountInput.dataset.userSelected === 'true') {
+                extraBeds = Math.max(requiredExtraBeds, Number(extraBedCountInput.value) || 0);
+            }
+            extraBedCountInput.min = requiredExtraBeds;
+            extraBedCountInput.max = rooms;
+            if (extraBeds > rooms && requiredExtraBeds <= rooms) {
+                extraBeds = rooms;
+            }
+            extraBedCountInput.value = extraBeds;
+            extraBedCountInput.setCustomValidity(requiredExtraBeds > rooms
+                ? `This room count cannot fit all guests. Select at least ${suggestedRooms} rooms.`
+                : '');
+        }
         let subtotal = (bookingPricing.adultBase * adults) + (bookingPricing.childBase * children) + bookingPricing.fixed;
 
         bookingPricing.hotels.forEach((hotel) => {
-            subtotal += ((hotel.adult * adults) + (hotel.child * children)) * hotel.nights;
+            subtotal += ((hotel.adult * adults) + (hotel.child * children) + (hotel.extraBed * extraBeds)) * hotel.nights;
         });
 
-        subtotal += bookingPricing.places * (adults + children);
+        bookingPricing.places.forEach((place) => {
+            const adultRate = country === 'India' ? place.indian : place.foreigner;
+            const studentRate = country === 'India' ? place.studentIndian : place.studentForeigner;
+            subtotal += (adultRate * (adults - students)) + (place.child * children) + (studentRate * students);
+        });
         const discountedTotal = subtotal * (1 - (bookingPricing.discount / 100));
         const total = discountedTotal * (1 + (bookingPricing.tax / 100));
 
         estimatedTotal.textContent = `₹${currency.format(Math.max(0, total))}`;
-        guestSummary.textContent = `${adults} adult${adults === 1 ? '' : 's'} · ${children} child${children === 1 ? '' : 'ren'}`;
+        guestSummary.textContent = `${adults} adult${adults === 1 ? '' : 's'} · ${students} student${students === 1 ? '' : 's'} · ${children} child${children === 1 ? '' : 'ren'}`;
+        if (roomCountInput) {
+            const extraBedCost = bookingPricing.hotels.reduce((total, hotel) => total + (hotel.extraBed * extraBeds * hotel.nights), 0);
+            roomSummary.textContent = `${rooms} room${rooms === 1 ? '' : 's'} selected for ${adults} adult${adults === 1 ? '' : 's'} and ${children} child${children === 1 ? '' : 'ren'}. Recommended minimum: ${suggestedRooms}.`;
+            extraBedSummary.textContent = extraBeds
+                ? `${extraBeds} extra bed${extraBeds === 1 ? '' : 's'} · ₹${currency.format(extraBedCost)} total extra-bed charge`
+                : 'No extra-bed charge';
+        }
     }
 
     adultCountInput.addEventListener('input', updateBookingTotal);
     childCountInput.addEventListener('input', updateBookingTotal);
+    studentCountInput.addEventListener('input', updateBookingTotal);
+    countryInput.addEventListener('change', updateBookingTotal);
+    roomCountInput?.addEventListener('input', function () {
+        roomCountInput.dataset.userSelected = 'true';
+        updateBookingTotal();
+    });
+    extraBedCountInput?.addEventListener('input', function () {
+        extraBedCountInput.dataset.userSelected = 'true';
+        updateBookingTotal();
+    });
+
     updateBookingTotal();
 </script>
 @endpush

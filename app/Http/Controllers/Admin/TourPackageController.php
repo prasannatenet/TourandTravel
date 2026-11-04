@@ -8,6 +8,7 @@ use App\Models\CityPlace;
 use App\Models\Country;
 use App\Models\Hotel;
 use App\Models\HotelRoom;
+use App\Models\HotelRoomUnavailableDate;
 use App\Models\PackageDestination;
 use App\Models\PackageInclusion;
 use App\Models\PackageInclusionPackage;
@@ -17,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
@@ -88,6 +90,7 @@ class TourPackageController extends Controller
         $this->syncDestinations($package, $validated['destinations'] ?? []);
         $inclusionItemIds = $this->syncInclusions($package, $validated['inclusions'] ?? []);
         $this->syncPlanItems($package, $validated['plan_items'] ?? [], $inclusionItemIds);
+        $this->blockHotelRoomDatesForPackage($package, $validated['plan_items'] ?? [], $validated['availabilities'] ?? []);
 
         return redirect()->route('admin.packages.index')->with('success', 'Package created.');
     }
@@ -159,6 +162,7 @@ class TourPackageController extends Controller
         $this->syncDestinations($package, $validated['destinations'] ?? []);
         $inclusionItemIds = $this->syncInclusions($package, $validated['inclusions'] ?? []);
         $this->syncPlanItems($package, $validated['plan_items'] ?? [], $inclusionItemIds);
+        $this->blockHotelRoomDatesForPackage($package, $validated['plan_items'] ?? [], $validated['availabilities'] ?? []);
 
         return redirect()->route('admin.packages.index')->with('success', 'Package updated.');
     }
@@ -421,6 +425,50 @@ class TourPackageController extends Controller
                 'seat_limit' => $details['seat_limit'],
                 'adult_price_override' => $details['adult_price_override'] ?? null,
             ]);
+        }
+    }
+
+    /**
+     * Block hotel room dates for all days of the package when hotel plan items exist.
+     * Each hotel plan item blocks the room for the package departure date plus each night.
+     *
+     * @param  array<int, array<string, mixed>>  $planItems
+     * @param  array<int, array{id?: int|string|null, departure_date: string, seat_limit: int|string, adult_price_override?: float|string|null}>  $availabilities
+     */
+    private function blockHotelRoomDatesForPackage(TourPackage $package, array $planItems, array $availabilities): void
+    {
+        $departureDates = collect($availabilities)
+            ->pluck('departure_date')
+            ->map(fn ($date) => Carbon::parse($date))
+            ->all();
+
+        if ($departureDates === []) {
+            return;
+        }
+
+        // Remove previously blocked dates for this package so updates stay in sync
+        HotelRoomUnavailableDate::query()
+            ->where('package_id', $package->id)
+            ->where('reason', 'package')
+            ->delete();
+
+        foreach ($planItems as $item) {
+            if (($item['kind'] ?? null) !== 'hotel' || empty($item['hotel_room_id'])) {
+                continue;
+            }
+
+            $nights = (int) max(1, $item['nights'] ?? 1);
+
+            foreach ($departureDates as $departureDate) {
+                for ($offset = 0; $offset < $nights; $offset++) {
+                    $date = $departureDate->copy()->addDays($offset)->format('Y-m-d');
+
+                    HotelRoomUnavailableDate::updateOrCreate(
+                        ['hotel_room_id' => (int) $item['hotel_room_id'], 'date' => $date],
+                        ['reason' => 'package', 'package_id' => $package->id]
+                    );
+                }
+            }
         }
     }
 

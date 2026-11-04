@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Hotel;
 
 use App\Http\Controllers\Controller;
 use App\Models\Hotel;
+use App\Models\HotelRoomUnavailableDate;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -20,7 +23,13 @@ class HotelRoomController extends Controller
             ->latest()
             ->paginate(10);
 
-        return view('hotel.rooms.index', compact('rooms'));
+        $unavailableDates = HotelRoomUnavailableDate::query()
+            ->whereIn('hotel_room_id', $rooms->pluck('id'))
+            ->get(['hotel_room_id', 'date'])
+            ->map(fn (HotelRoomUnavailableDate $unavailableDate) => $unavailableDate->date->format('Y-m-d'))
+            ->groupBy('hotel_room_id');
+
+        return view('hotel.rooms.index', compact('rooms', 'unavailableDates'));
     }
 
     public function create(Request $request): View
@@ -145,6 +154,69 @@ class HotelRoomController extends Controller
         Storage::disk('public')->delete($images);
 
         return redirect()->route('hotel.rooms.index')->with('success', 'Room deleted successfully.');
+    }
+
+    public function calendarData(Request $request, int $room): JsonResponse
+    {
+        $hotelRoom = $this->hotel($request)->rooms()->findOrFail($room);
+
+        $dates = HotelRoomUnavailableDate::query()
+            ->where('hotel_room_id', $hotelRoom->id)
+            ->pluck('date')
+            ->map(fn ($date) => $date->format('Y-m-d'))
+            ->all();
+
+        return response()->json([
+            'room_id' => $hotelRoom->id,
+            'unavailable_dates' => $dates,
+        ]);
+    }
+
+    /**
+     * Block or reopen a single date for a room. Responds with JSON for the
+     * calendar modal's fetch call and redirects back for regular form posts.
+     */
+    public function toggleCalendarDate(Request $request, int $room): JsonResponse|RedirectResponse
+    {
+        $hotelRoom = $this->hotel($request)->rooms()->findOrFail($room);
+
+        $validated = $request->validate([
+            'date' => ['required', 'date', 'after_or_equal:today'],
+            'action' => ['required', 'in:block,unblock'],
+        ]);
+
+        $date = $validated['date'];
+        $isBlocking = $validated['action'] === 'block';
+
+        if ($isBlocking) {
+            HotelRoomUnavailableDate::updateOrCreate(
+                ['hotel_room_id' => $hotelRoom->id, 'date' => $date],
+                ['reason' => 'admin_blocked']
+            );
+        } else {
+            HotelRoomUnavailableDate::query()
+                ->where('hotel_room_id', $hotelRoom->id)
+                ->where('date', $date)
+                ->delete();
+        }
+
+        $message = 'Room marked as '.($isBlocking ? 'booked' : 'available')
+            .' on '.Carbon::parse($date)->format('M d, Y').'.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'date' => $date,
+                'blocked' => $isBlocking,
+                'message' => $message,
+                'unavailable_dates' => HotelRoomUnavailableDate::query()
+                    ->where('hotel_room_id', $hotelRoom->id)
+                    ->pluck('date')
+                    ->map(fn ($unavailableDate) => $unavailableDate->format('Y-m-d'))
+                    ->all(),
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 
     private function hotel(Request $request): Hotel

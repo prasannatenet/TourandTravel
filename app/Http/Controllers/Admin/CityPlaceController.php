@@ -147,7 +147,10 @@ class CityPlaceController extends Controller
             'secondary_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'visit_duration_hours' => ['required', 'numeric', 'min:0.5', 'max:72'],
             'best_time_to_visit' => ['required', Rule::in(CityPlace::BEST_TIMES)],
-            'price_per_person' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'price_child' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'price_indian' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'price_foreigner' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'price_student' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -159,6 +162,7 @@ class CityPlaceController extends Controller
 
         $returnToCityId = $validated['return_to_city_id'] ?? null;
         unset($validated['country_id'], $validated['state_id'], $validated['return_to_city_id']);
+        $validated['price_per_person'] = $validated['price_indian'] ?? $validated['price_child'];
 
         if (CityPlace::where('city_id', $validated['city_id'])->where('name', $validated['name'])->exists()) {
             return back()->withErrors(['name' => 'This place already exists in the selected city.'])->withInput();
@@ -207,7 +211,10 @@ class CityPlaceController extends Controller
             'secondary_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'visit_duration_hours' => ['required', 'numeric', 'min:0.5', 'max:72'],
             'best_time_to_visit' => ['required', Rule::in(CityPlace::BEST_TIMES)],
-            'price_per_person' => ['required', 'numeric', 'min:0', 'max:999999.99'],
+            'price_child' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'price_indian' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'price_foreigner' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            'price_student' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'note' => ['nullable', 'string', 'max:1000'],
             'remove_secondary' => ['nullable', 'array'],
             'remove_secondary.*' => ['string'],
@@ -220,6 +227,9 @@ class CityPlaceController extends Controller
         }
 
         unset($validated['country_id'], $validated['state_id']);
+        $validated['price_per_person'] = array_key_exists('price_indian', $validated)
+            ? ($validated['price_indian'] ?? $validated['price_child'])
+            : ($place->price_indian ?? $validated['price_child']);
 
         if (CityPlace::where('city_id', $validated['city_id'])->where('name', $validated['name'])->where('id', '!=', $place->id)->exists()) {
             return back()->withErrors(['name' => 'This place already exists in the selected city.'])->withInput();

@@ -10,6 +10,16 @@ class AdminSeeder extends Seeder
 {
     public function run(): void
     {
+        // First, update the existing admin user's password to use Bcrypt
+        $admin = User::where('email', 'admin@tourtravel.com')->first();
+
+        if ($admin) {
+            // Update the password to use Bcrypt hashing
+            $admin->password = Hash::make('Admin@123456');
+            $admin->save();
+        }
+
+        // Then create/update the admin user
         User::updateOrCreate(
             ['email' => 'admin@tourtravel.com'],
             [

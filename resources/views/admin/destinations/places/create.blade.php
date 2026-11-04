@@ -47,10 +47,10 @@
 <div><label class="block text-sm font-semibold mb-1">Visit Duration (hours) *</label><input type="number" name="visit_duration_hours" value="{{ old('visit_duration_hours', 2) }}" required min="0.5" max="72" step="0.5" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
 <div><label class="block text-sm font-semibold mb-1">Best Time to Visit *</label>
 <select name="best_time_to_visit" required class="w-full border rounded-lg px-3 py-2 text-sm"><option value="">-- Select --</option>@foreach (['morning' => 'Morning', 'afternoon' => 'Afternoon', 'evening' => 'Evening', 'night' => 'Night'] as $v => $l)<option value="{{ $v }}" {{ old('best_time_to_visit') == $v ? 'selected' : '' }}>{{ $l }}</option>@endforeach</select></div>
-<div><label class="block text-sm font-semibold mb-1">Price per Person (Rs.) *</label><input type="number" name="price_per_person" value="{{ old('price_per_person', 0) }}" required min="0" max="999999.99" step="1.00" placeholder="0.00" onfocus="this.select()" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-<div><label class="block text-sm font-semibold mb-1">Price per Person (Indians) (Rs.)</label><input type="number" name="price_indian" value="{{ old('price_indian', 0) }}" min="0" max="999999.99" step="1.00" placeholder="0.00" onfocus="this.select()" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-<div><label class="block text-sm font-semibold mb-1">Price per Person (Foreigners) (Rs.)</label><input type="number" name="price_foreigner" value="{{ old('price_foreigner', 0) }}" min="0" max="999999.99" step="1.00" placeholder="0.00" onfocus="this.select()" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-<div><label class="block text-sm font-semibold mb-1">Price per Person (Student) (Rs.)</label><input type="number" name="price_student" value="{{ old('price_student', 0) }}" min="0" max="999999.99" step="1.00" placeholder="0.00" onfocus="this.select()" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+<div><label class="block text-sm font-semibold mb-1">Price per Child (Age 3–15) (Rs.) </label><input type="number" name="price_child" value="{{ old('price_child', 0) }}" required min="0" max="999999.99" step="0.01" placeholder="0.00" onfocus="this.select()" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+<div><label class="block text-sm font-semibold mb-1">Price per Person (Indians) (Rs.)</label><input type="number" name="price_indian" value="{{ old('price_indian') }}" min="0" max="999999.99" step="0.01" placeholder="Optional" onfocus="this.select()" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+<div><label class="block text-sm font-semibold mb-1">Price per Person (Foreigners) (Rs.)</label><input type="number" name="price_foreigner" value="{{ old('price_foreigner') }}" min="0" max="999999.99" step="0.01" placeholder="Optional" onfocus="this.select()" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+<div><label class="block text-sm font-semibold mb-1">Price per Person (Student) (Rs.)</label><input type="number" name="price_student" value="{{ old('price_student') }}" min="0" max="999999.99" step="0.01" placeholder="Optional" onfocus="this.select()" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
 </div>
 <div><label class="block text-sm font-semibold mb-1">Note for the Place (optional)</label><textarea name="note" maxlength="1000" rows="2" placeholder="Carry sunscreen, avoid monsoon..." class="w-full border rounded-lg px-3 py-2 text-sm">{{ old('note') }}</textarea></div>
 <div class="flex gap-2"><button class="px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg">Save Place</button><a href="{{ route('admin.places.index') }}" class="px-5 py-2 bg-slate-100 text-sm rounded-lg">Cancel</a></div>
@@ -60,4 +60,3 @@
 @push('scripts')
 @include('admin.destinations.places._cascade-script')
 @endpush
-

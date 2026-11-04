@@ -55,22 +55,37 @@
             <a href="{{ route('admin.hotels.index') }}" class="sidebar-link {{ request()->routeIs('admin.hotels.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
                 <i class="fa-solid fa-hotel w-5 text-center"></i> Hotels
             </a>
-            <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
+            @php($cabOpen = request()->routeIs('admin.cabs.*', 'admin.cab-associates.*'))
+            <div class="rounded-lg">
+                <button type="button" id="cabToggle" aria-expanded="{{ $cabOpen ? 'true' : 'false' }}" class="sidebar-link {{ $cabOpen ? 'active' : '' }} w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-taxi w-5 text-center"></i>
+                    <span>Cab</span>
+                    <i id="cabChevron" class="fa-solid fa-chevron-down ml-auto text-[10px] transition-transform {{ $cabOpen ? 'rotate-180' : '' }}"></i>
+                </button>
+                <div id="cabMenu" class="{{ $cabOpen ? '' : 'hidden' }} ml-8 mt-1 mb-1 space-y-1 text-[13px]">
+                    <a href="{{ route('admin.cabs.index') }}" class="sidebar-sub {{ request()->routeIs('admin.cabs.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">1. Cab</a>
+                    <a href="{{ route('admin.cab-associates.index') }}" class="sidebar-sub {{ request()->routeIs('admin.cab-associates.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">2. Cab Associate</a>
+                </div>
+            </div>
+            {{-- <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
                 <i class="fa-solid fa-map-location-dot w-5 text-center"></i> Tours
                 <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">Soon</span>
-            </a>
+            </a> --}}
             <a href="{{ route('admin.bookings.index') }}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 {{ request()->routeIs('admin.bookings') ? 'bg-blue-800 text-white' : '' }}">
                 <i class="fa-solid fa-ticket w-5 text-center"></i> Bookings
                 {{-- <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">{{ request()->routeIs('admin.bookings') ? '' : 'Soon' }}</span> --}}
             </a>
-            <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
+            <a href="{{ route('admin.email-settings.edit') }}" class="sidebar-link {{ request()->routeIs('admin.email-settings.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                <i class="fa-solid fa-envelope w-5 text-center"></i> Email Settings
+            </a>
+            {{-- <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
                 <i class="fa-solid fa-users w-5 text-center"></i> Customers
                 <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">Soon</span>
-            </a>
-            <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
+            </a> --}}
+            {{-- <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
                 <i class="fa-solid fa-gear w-5 text-center"></i> Settings
                 <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">Soon</span>
-            </a>
+            </a> --}}
         </nav>
         <div class="p-4 border-t border-slate-800">
             <div class="flex items-center gap-3">
@@ -114,7 +129,9 @@
                 <a href="{{ route('admin.inclusions.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.inclusions.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Package Inclusions</a>
                 <a href="{{ route('admin.packages.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.packages.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Packages</a>
                 <a href="{{ route('admin.hotels.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.hotels.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Hotels</a>
+                <a href="{{ route('admin.hotel-booking-requests.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.hotel-booking-requests.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Hotel Booking Reqs.</a>
             <a href="{{ route('admin.bookings.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.bookings.index') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Bookings</a>
+                <a href="{{ route('admin.email-settings.edit') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.email-settings.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Email Settings</a>
                 <a href="{{ route('admin.countries.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Country</a>
                 <a href="{{ route('admin.states.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">State</a>
                 <a href="{{ route('admin.cities.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">City</a>
@@ -166,5 +183,40 @@
     });
 })();
 </script>
+<script>
+(function () {
+    var cabToggle = document.getElementById('cabToggle');
+    var cabMenu = document.getElementById('cabMenu');
+    var cabChevron = document.getElementById('cabChevron');
+    
+    if (!cabToggle || !cabMenu) {
+        return;
+    }
+    
+    var cabOpen = {{ $cabOpen ? 'true' : 'false' }};
+    
+    if (cabOpen) {
+        cabMenu.classList.remove('hidden');
+        if (cabChevron) {
+            cabChevron.classList.add('rotate-180');
+        }
+        cabToggle.setAttribute('aria-expanded', 'true');
+    }
+    
+    cabToggle.addEventListener('click', function () {
+        var isHidden = cabMenu.classList.toggle('hidden');
+        if (cabChevron) {
+            cabChevron.classList.toggle('rotate-180', !isHidden);
+        }
+        cabToggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+        
+        try {
+            localStorage.setItem('cabMenuOpen', isHidden ? '0' : '1');
+        } catch (e) {}
+    });
+})();
+</script>
+
+
 </body>
 </html>

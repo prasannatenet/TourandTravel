@@ -16,11 +16,11 @@
             <div class="p-6 text-left sm:p-10">
                 <div class="rounded-xl border border-slate-200 bg-slate-50 p-5">
                     <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Booking summary</p>
-                    <h2 class="mt-2 text-lg font-black text-slate-900">{{ $booking->package->name }}</h2>
+                    <h2 class="mt-2 text-lg font-black text-slate-900">{{ $booking->itinerary_override['custom_package']['name'] ?? $booking->package->name }}</h2>
                     <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
                         <div><dt class="text-slate-500">Name</dt><dd class="mt-1 font-bold text-slate-800">{{ $booking->name }}</dd></div>
                         <div><dt class="text-slate-500">Country</dt><dd class="mt-1 font-bold text-slate-800">{{ $booking->country }}</dd></div>
-                        <div><dt class="text-slate-500">Travellers</dt><dd class="mt-1 font-bold text-slate-800">{{ $booking->adult_count }} adult{{ $booking->adult_count === 1 ? '' : 's' }} · {{ $booking->child_count }} child{{ $booking->child_count === 1 ? '' : 'ren' }}</dd></div>
+                        <div><dt class="text-slate-500">Travellers</dt><dd class="mt-1 font-bold text-slate-800">{{ $booking->adult_count }} adult{{ $booking->adult_count === 1 ? '' : 's' }} ({{ $booking->student_count }} student{{ $booking->student_count === 1 ? '' : 's' }}) · {{ $booking->child_count }} child{{ $booking->child_count === 1 ? '' : 'ren' }}</dd></div>
                         <div><dt class="text-slate-500">Email</dt><dd class="mt-1 break-words font-bold text-slate-800">{{ $booking->email }}</dd></div>
                         <div><dt class="text-slate-500">Mobile</dt><dd class="mt-1 font-bold text-slate-800">{{ $booking->mobile }}</dd></div>
                     </dl>
