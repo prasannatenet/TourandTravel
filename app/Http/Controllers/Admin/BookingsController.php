@@ -360,7 +360,7 @@ class BookingsController extends Controller
 
     public function process(Request $request, Booking $booking): View
     {
-        abort_if($booking->status !== 'pending', 422, 'Only pending bookings can be processed.');
+        abort_unless(in_array($booking->status, ['pending', 'quotation_sent'], true), 422, 'Only pending or quoted bookings can be processed.');
         abort_if($booking->package === null, 422, 'This booking has no package itinerary.');
 
         $packages = TourPackage::query()->where('is_active', true)->orderBy('name')->get();
@@ -455,7 +455,7 @@ class BookingsController extends Controller
 
     public function updateProcessing(Request $request, Booking $booking): RedirectResponse
     {
-        abort_if($booking->status !== 'pending', 422, 'Only pending bookings can be processed.');
+        abort_unless(in_array($booking->status, ['pending', 'quotation_sent'], true), 422, 'Only pending or quoted bookings can be processed.');
         $currentItineraryItems = $booking->package
             ? $this->bookingItineraryItems($booking->package, $booking->itinerary_override)
             : collect();
@@ -743,13 +743,15 @@ class BookingsController extends Controller
                 ->with('error', 'Booking #'.$booking->id.' was updated, but its quotation email could not be sent. Check the email settings and try again.');
         }
 
+        $booking->update(['status' => 'quotation_sent']);
+
         return redirect()->route('admin.bookings.show', $booking)
-            ->with('success', 'Booking #'.$booking->id.' package, itinerary, and hotel have been updated, and the quotation was emailed. The booking remains pending.');
+            ->with('success', 'Booking #'.$booking->id.' package, itinerary, and hotel have been updated, the quotation was emailed, and its status is now Quotation Sent.');
     }
 
     public function confirm(Booking $booking): RedirectResponse
     {
-        abort_if($booking->status !== 'pending', 422, 'Only pending bookings can be confirmed.');
+        abort_if($booking->status !== 'quotation_sent', 422, 'Only bookings with a sent quotation can be confirmed.');
 
         $booking->update(['status' => 'confirmed']);
 
@@ -769,7 +771,7 @@ class BookingsController extends Controller
     {
         $validated = $request->validate([
             'package_id' => ['required', 'integer', 'exists:tour_packages,id'],
-            'status' => ['required', 'in:pending,confirmed,cancelled'],
+            'status' => ['required', 'in:pending,quotation_sent,confirmed,cancelled'],
             'adult_count' => ['required', 'integer', 'min:1', 'max:99'],
             'child_count' => ['required', 'integer', 'min:0', 'max:99'],
             'student_count' => ['required', 'integer', 'min:0', 'lte:adult_count'],
@@ -777,6 +779,11 @@ class BookingsController extends Controller
             'room_count' => ['required', 'integer', 'min:1', 'max:20'],
             'extra_bed_count' => ['required', 'integer', 'min:0', 'max:20'],
         ]);
+        abort_if(
+            $validated['status'] === 'quotation_sent' && $booking->status !== 'quotation_sent',
+            422,
+            'A booking can only be marked as quotation sent after its quotation email is sent.',
+        );
 
         $package = TourPackage::with(['availabilities', 'planItems.place', 'planItems.hotelRoom'])
             ->findOrFail($validated['package_id']);

@@ -26,8 +26,8 @@
         <div>
             <label for="status" class="mb-1 block text-sm font-semibold">Booking status</label>
             <select id="status" name="status" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
-                @foreach (['pending' => 'Pending', 'confirmed' => 'Confirmed', 'cancelled' => 'Cancelled'] as $statusValue => $statusLabel)
-                    <option value="{{ $statusValue }}" @selected(old('status', $booking->status) === $statusValue)>{{ $statusLabel }}</option>
+                @foreach (['pending' => 'Pending', 'quotation_sent' => 'Quotation Sent', 'confirmed' => 'Confirmed', 'cancelled' => 'Cancelled'] as $statusValue => $statusLabel)
+                    <option value="{{ $statusValue }}" @disabled($statusValue === 'quotation_sent' && $booking->status !== 'quotation_sent') @selected(old('status', $booking->status) === $statusValue)>{{ $statusLabel }}</option>
                 @endforeach
             </select>
         </div>

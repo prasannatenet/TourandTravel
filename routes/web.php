@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\EmailSettingsController;
 use App\Http\Controllers\Admin\HotelController;
 use App\Http\Controllers\Admin\HotelRoomCustomerPriceController;
 use App\Http\Controllers\Admin\PackageInclusionController;
+use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Admin\StateController;
 use App\Http\Controllers\Admin\TourPackageController;
 use App\Http\Controllers\CabAssociate\CabAssociateAuthController;
@@ -76,7 +77,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1')->name('login.post');
     });
 
-    Route::middleware(['auth', 'admin'])->group(function (): void {
+    Route::middleware(['auth', 'admin', 'admin.permission'])->group(function (): void {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('email-settings', [EmailSettingsController::class, 'edit'])->name('email-settings.edit');
         Route::put('email-settings', [EmailSettingsController::class, 'update'])->name('email-settings.update');
@@ -116,5 +117,13 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('cabs/{cab}/availability', [CabController::class, 'availability'])->name('cabs.availability');
         Route::resource('cab-associates', CabAssociateController::class)->except(['show']);
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+
+        // Role and Permission Management Routes
+        Route::get('roles-permissions', [RolePermissionController::class, 'index'])->name('roles-permissions.index');
+        Route::post('roles-permissions/create-role', [RolePermissionController::class, 'createRole'])->name('roles-permissions.create-role');
+        Route::post('roles-permissions/update-role/{id}', [RolePermissionController::class, 'updateRole'])->name('roles-permissions.update-role');
+        Route::post('roles-permissions/delete-role/{id}', [RolePermissionController::class, 'deleteRole'])->name('roles-permissions.delete-role');
+        Route::post('roles-permissions/assign-role/{userId}', [RolePermissionController::class, 'assignRoleToUser'])->name('roles-permissions.assign-role');
+        Route::get('roles-permissions/get-user-roles/{userId}', [RolePermissionController::class, 'getUserRoles'])->name('roles-permissions.get-user-roles');
     });
 });

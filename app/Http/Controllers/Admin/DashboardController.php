@@ -11,6 +11,8 @@ use App\Models\TourPackage;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class DashboardController extends Controller
 {
@@ -35,6 +37,8 @@ class DashboardController extends Controller
                 ->whereYear('created_at', $now->year)
                 ->sum('amount'),
             'total_revenue' => Booking::sum('amount'),
+            'total_roles' => Role::count(),
+            'total_permissions' => Permission::count(),
         ];
 
         $recentBookings = Booking::with('package')
@@ -103,6 +107,12 @@ class DashboardController extends Controller
             ->take(5)
             ->get(['id', 'name', 'email', 'is_admin', 'created_at']);
 
+        // Get roles with most users
+        $rolesWithUserCount = Role::withCount('users')
+            ->orderBy('users_count', 'desc')
+            ->take(5)
+            ->get();
+
         return view('admin.dashboard', compact(
             'stats',
             'recentBookings',
@@ -111,7 +121,8 @@ class DashboardController extends Controller
             'revenueChartData',
             'statusDistribution',
             'topPackages',
-            'recentUsers'
+            'recentUsers',
+            'rolesWithUserCount'
         ));
     }
 }

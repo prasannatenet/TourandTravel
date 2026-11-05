@@ -19,6 +19,11 @@
             {{ session('success') }}
         </div>
     @endif
+    @if(session('error'))
+        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+            {{ session('error') }}
+        </div>
+    @endif
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Basic Information -->
@@ -81,6 +86,8 @@
                     <dd class="font-semibold">
                         @if($booking->status === 'pending')
                             <span class="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-800">Pending</span>
+                        @elseif($booking->status === 'quotation_sent')
+                            <span class="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">Quotation Sent</span>
                         @elseif($booking->status === 'confirmed')
                             <span class="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">Confirmed</span>
                         @elseif($booking->status === 'cancelled')
@@ -104,7 +111,7 @@
         <div class="md:col-span-2 rounded-xl bg-slate-50 p-6">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 class="font-semibold text-sm text-slate-500 uppercase">Booking Itinerary</h3>
-                @if ($booking->status === 'pending' && $booking->package)
+                @if (in_array($booking->status, ['pending', 'quotation_sent'], true) && $booking->package)
                     <a href="{{ route('admin.bookings.process', $booking) }}" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Process Booking</a>
                 @endif
             </div>
@@ -209,7 +216,7 @@
             <div class="space-y-2">
                 <a href="{{ route('admin.bookings.index') }}" class="w-full px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">Back to Bookings</a>
                 <a href="{{ route('admin.bookings.edit', $booking) }}" class="block w-full rounded-lg bg-indigo-600 px-4 py-2 text-center text-white transition hover:bg-indigo-700"><i class="fa-solid fa-pen-to-square mr-2"></i>Update Booking</a>
-                @if($booking->status === 'pending')
+                @if($booking->status === 'quotation_sent')
                     <form action="{{ route('admin.bookings.confirm', $booking->id) }}" method="POST" class="flex gap-2">
                         @csrf
                         @method('PATCH')

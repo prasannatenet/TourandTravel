@@ -29,63 +29,76 @@
             </div>
         </div>
         <nav class="min-h-0 flex-1 overflow-y-auto px-3 py-4 space-y-1 text-sm">
-            <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
-                <i class="fa-solid fa-gauge-high w-5 text-center"></i> Dashboard
-            </a>
+            @php($isAdminUser = auth()->user()->isAdmin())
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'dashboard.view'))
+                <a href="{{ route('admin.dashboard') }}" class="sidebar-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-gauge-high w-5 text-center"></i> Dashboard
+                </a>
+            @endif
             @php($destinationOpen = request()->routeIs('admin.countries.*', 'admin.states.*', 'admin.cities.*', 'admin.places.*'))
-            <div class="rounded-lg">
-                <button type="button" id="destinationToggle" aria-expanded="{{ $destinationOpen ? 'true' : 'false' }}" class="sidebar-link {{ $destinationOpen ? 'active' : '' }} w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
-                    <i class="fa-solid fa-location-dot w-5 text-center"></i>
-                    <span>Destination</span>
-                    <i id="destinationChevron" class="fa-solid fa-chevron-down ml-auto text-[10px] transition-transform {{ $destinationOpen ? 'rotate-180' : '' }}"></i>
-                </button>
-                <div id="destinationMenu" class="{{ $destinationOpen ? '' : 'hidden' }} ml-8 mt-1 mb-1 space-y-1 text-[13px]">
-                    <a href="{{ route('admin.countries.index') }}" class="sidebar-sub {{ request()->routeIs('admin.countries.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">1. Country</a>
-                    <a href="{{ route('admin.states.index') }}" class="sidebar-sub {{ request()->routeIs('admin.states.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">2. State</a>
-                    <a href="{{ route('admin.cities.index') }}" class="sidebar-sub {{ request()->routeIs('admin.cities.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">3. City</a>
-                    <a href="{{ route('admin.places.index') }}" class="sidebar-sub {{ request()->routeIs('admin.places.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">4. Places</a>
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'destinations.view'))
+                <div class="rounded-lg">
+                    <button type="button" id="destinationToggle" aria-expanded="{{ $destinationOpen ? 'true' : 'false' }}" class="sidebar-link {{ $destinationOpen ? 'active' : '' }} w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                        <i class="fa-solid fa-location-dot w-5 text-center"></i>
+                        <span>Destination</span>
+                        <i id="destinationChevron" class="fa-solid fa-chevron-down ml-auto text-[10px] transition-transform {{ $destinationOpen ? 'rotate-180' : '' }}"></i>
+                    </button>
+                    <div id="destinationMenu" class="{{ $destinationOpen ? '' : 'hidden' }} ml-8 mt-1 mb-1 space-y-1 text-[13px]">
+                        <a href="{{ route('admin.countries.index') }}" class="sidebar-sub {{ request()->routeIs('admin.countries.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">1. Country</a>
+                        <a href="{{ route('admin.states.index') }}" class="sidebar-sub {{ request()->routeIs('admin.states.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">2. State</a>
+                        <a href="{{ route('admin.cities.index') }}" class="sidebar-sub {{ request()->routeIs('admin.cities.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">3. City</a>
+                        <a href="{{ route('admin.places.index') }}" class="sidebar-sub {{ request()->routeIs('admin.places.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">4. Places</a>
+                    </div>
                 </div>
-            </div>
-            <a href="{{ route('admin.inclusions.index') }}" class="sidebar-link {{ request()->routeIs('admin.inclusions.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
-                <i class="fa-solid fa-list-check w-5 text-center"></i> Package Inclusions
-            </a>
-            <a href="{{ route('admin.packages.index') }}" class="sidebar-link {{ request()->routeIs('admin.packages.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
-                <i class="fa-solid fa-suitcase-rolling w-5 text-center"></i> Packages
-            </a>
-            <a href="{{ route('admin.hotels.index') }}" class="sidebar-link {{ request()->routeIs('admin.hotels.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
-                <i class="fa-solid fa-hotel w-5 text-center"></i> Hotels
-            </a>
+            @endif
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'inclusions.view'))
+                <a href="{{ route('admin.inclusions.index') }}" class="sidebar-link {{ request()->routeIs('admin.inclusions.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-list-check w-5 text-center"></i> Package Inclusions
+                </a>
+            @endif
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'packages.view'))
+                <a href="{{ route('admin.packages.index') }}" class="sidebar-link {{ request()->routeIs('admin.packages.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-suitcase-rolling w-5 text-center"></i> Packages
+                </a>
+            @endif
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'hotels.view'))
+                <a href="{{ route('admin.hotels.index') }}" class="sidebar-link {{ request()->routeIs('admin.hotels.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-hotel w-5 text-center"></i> Hotels
+                </a>
+            @endif
             @php($cabOpen = request()->routeIs('admin.cabs.*', 'admin.cab-associates.*'))
-            <div class="rounded-lg">
-                <button type="button" id="cabToggle" aria-expanded="{{ $cabOpen ? 'true' : 'false' }}" class="sidebar-link {{ $cabOpen ? 'active' : '' }} w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
-                    <i class="fa-solid fa-taxi w-5 text-center"></i>
-                    <span>Cab</span>
-                    <i id="cabChevron" class="fa-solid fa-chevron-down ml-auto text-[10px] transition-transform {{ $cabOpen ? 'rotate-180' : '' }}"></i>
-                </button>
-                <div id="cabMenu" class="{{ $cabOpen ? '' : 'hidden' }} ml-8 mt-1 mb-1 space-y-1 text-[13px]">
-                    <a href="{{ route('admin.cabs.index') }}" class="sidebar-sub {{ request()->routeIs('admin.cabs.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">1. Cab</a>
-                    <a href="{{ route('admin.cab-associates.index') }}" class="sidebar-sub {{ request()->routeIs('admin.cab-associates.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">2. Cab Associate</a>
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'cabs.view') || auth()->user()->getAllPermissions()->contains('name', 'cab-associates.view'))
+                <div class="rounded-lg">
+                    <button type="button" id="cabToggle" aria-expanded="{{ $cabOpen ? 'true' : 'false' }}" class="sidebar-link {{ $cabOpen ? 'active' : '' }} w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                        <i class="fa-solid fa-taxi w-5 text-center"></i>
+                        <span>Cab</span>
+                        <i id="cabChevron" class="fa-solid fa-chevron-down ml-auto text-[10px] transition-transform {{ $cabOpen ? 'rotate-180' : '' }}"></i>
+                    </button>
+                    <div id="cabMenu" class="{{ $cabOpen ? '' : 'hidden' }} ml-8 mt-1 mb-1 space-y-1 text-[13px]">
+                        @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'cabs.view'))
+                            <a href="{{ route('admin.cabs.index') }}" class="sidebar-sub {{ request()->routeIs('admin.cabs.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">1. Cab</a>
+                        @endif
+                        @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'cab-associates.view'))
+                            <a href="{{ route('admin.cab-associates.index') }}" class="sidebar-sub {{ request()->routeIs('admin.cab-associates.*') ? 'active' : '' }} block px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white">2. Cab Associate</a>
+                        @endif
+                    </div>
                 </div>
-            </div>
-            {{-- <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
-                <i class="fa-solid fa-map-location-dot w-5 text-center"></i> Tours
-                <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">Soon</span>
-            </a> --}}
-            <a href="{{ route('admin.bookings.index') }}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 {{ request()->routeIs('admin.bookings') ? 'bg-blue-800 text-white' : '' }}">
-                <i class="fa-solid fa-ticket w-5 text-center"></i> Bookings
-                {{-- <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">{{ request()->routeIs('admin.bookings') ? '' : 'Soon' }}</span> --}}
-            </a>
-            <a href="{{ route('admin.email-settings.edit') }}" class="sidebar-link {{ request()->routeIs('admin.email-settings.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
-                <i class="fa-solid fa-envelope w-5 text-center"></i> Email Settings
-            </a>
-            {{-- <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
-                <i class="fa-solid fa-users w-5 text-center"></i> Customers
-                <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">Soon</span>
-            </a> --}}
-            {{-- <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 opacity-70">
-                <i class="fa-solid fa-gear w-5 text-center"></i> Settings
-                <span class="ml-auto text-[10px] bg-slate-700 px-2 py-0.5 rounded-full">Soon</span>
-            </a> --}}
+            @endif
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'bookings.view'))
+                <a href="{{ route('admin.bookings.index') }}" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 {{ request()->routeIs('admin.bookings') ? 'bg-blue-800 text-white' : '' }}">
+                    <i class="fa-solid fa-ticket w-5 text-center"></i> Bookings
+                </a>
+            @endif
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'email-settings.view'))
+                <a href="{{ route('admin.email-settings.edit') }}" class="sidebar-link {{ request()->routeIs('admin.email-settings.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-envelope w-5 text-center"></i> Email Settings
+                </a>
+            @endif
+            @if ($isAdminUser)
+                <a href="{{ route('admin.roles-permissions.index') }}" class="sidebar-link {{ request()->routeIs('admin.roles-permissions.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-user-shield w-5 text-center"></i> Roles & Permissions
+                </a>
+            @endif
         </nav>
         <div class="p-4 border-t border-slate-800">
             <div class="flex items-center gap-3">
@@ -124,18 +137,37 @@
             </div>
             <!-- Mobile nav -->
             <nav class="md:hidden px-4 pb-3 flex gap-2 overflow-x-auto text-sm">
-                <a href="{{ route('admin.dashboard') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.dashboard') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Dashboard</a>
-                <a href="{{ route('admin.destinations.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.countries.*', 'admin.states.*', 'admin.cities.*', 'admin.places.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Destination</a>
-                <a href="{{ route('admin.inclusions.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.inclusions.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Package Inclusions</a>
-                <a href="{{ route('admin.packages.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.packages.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Packages</a>
-                <a href="{{ route('admin.hotels.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.hotels.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Hotels</a>
-                <a href="{{ route('admin.hotel-booking-requests.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.hotel-booking-requests.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Hotel Booking Reqs.</a>
-            <a href="{{ route('admin.bookings.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.bookings.index') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Bookings</a>
-                <a href="{{ route('admin.email-settings.edit') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.email-settings.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Email Settings</a>
-                <a href="{{ route('admin.countries.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Country</a>
-                <a href="{{ route('admin.states.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">State</a>
-                <a href="{{ route('admin.cities.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">City</a>
-                <a href="{{ route('admin.places.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Places</a>
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'dashboard.view'))
+                    <a href="{{ route('admin.dashboard') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.dashboard') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Dashboard</a>
+                @endif
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'destinations.view'))
+                    <a href="{{ route('admin.destinations.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.countries.*', 'admin.states.*', 'admin.cities.*', 'admin.places.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Destination</a>
+                @endif
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'inclusions.view'))
+                    <a href="{{ route('admin.inclusions.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.inclusions.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Package Inclusions</a>
+                @endif
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'packages.view'))
+                    <a href="{{ route('admin.packages.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.packages.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Packages</a>
+                @endif
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'hotels.view'))
+                    <a href="{{ route('admin.hotels.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.hotels.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Hotels</a>
+                @endif
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'bookings.view'))
+                    <a href="{{ route('admin.hotel-booking-requests.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.hotel-booking-requests.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Hotel Booking Reqs.</a>
+                    <a href="{{ route('admin.bookings.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.bookings.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Bookings</a>
+                @endif
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'email-settings.view'))
+                    <a href="{{ route('admin.email-settings.edit') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.email-settings.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Email Settings</a>
+                @endif
+                @if ($isAdminUser)
+                    <a href="{{ route('admin.roles-permissions.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.roles-permissions.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Roles &amp; Permissions</a>
+                @endif
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'destinations.view'))
+                    <a href="{{ route('admin.countries.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Country</a>
+                    <a href="{{ route('admin.states.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">State</a>
+                    <a href="{{ route('admin.cities.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">City</a>
+                    <a href="{{ route('admin.places.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Places</a>
+                @endif
             </nav>
         </header>
         <main class="p-4 md:p-8 flex-1">

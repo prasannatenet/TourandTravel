@@ -39,7 +39,7 @@
     @endif
 
     <div class="rounded-2xl border border-indigo-100 bg-indigo-50 p-5 text-sm text-indigo-900">
-        Changes on this page apply only to booking #{{ $booking->id }}. The booking will remain pending after saving.
+        Changes on this page apply only to booking #{{ $booking->id }}. Saving sends the updated quotation to the customer and marks the booking as Quotation Sent.
     </div>
 
     @if ($errors->any())

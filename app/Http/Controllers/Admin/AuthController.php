@@ -13,7 +13,7 @@ class AuthController extends Controller
     public function showLogin(): View|RedirectResponse
     {
         if (Auth::check()) {
-            if (Auth::user()->isAdmin()) {
+            if (Auth::user()->isAdmin() || Auth::user()->getAllPermissions()->isNotEmpty()) {
                 return redirect()->route('admin.dashboard');
             }
             Auth::logout();
@@ -33,14 +33,25 @@ class AuthController extends Controller
 
         $remember = $request->boolean('remember');
 
-        if (Auth::attempt(['email' => $credentials['email'], 'password' => $credentials['password'], 'is_admin' => 1], $remember)) {
+        if (Auth::attempt($credentials, $remember)) {
+            $user = Auth::user();
+
+            if ($user === null || (! $user->isAdmin() && $user->getAllPermissions()->isEmpty())) {
+                Auth::logout();
+                $request->session()->regenerate();
+
+                return back()->withErrors([
+                    'email' => 'These credentials do not match an administrator or an authorized dashboard account.',
+                ])->onlyInput('email', 'remember');
+            }
+
             $request->session()->regenerate();
 
             return redirect()->intended(route('admin.dashboard'));
         }
 
         return back()->withErrors([
-            'email' => 'These credentials do not match our records or you are not an admin.',
+            'email' => 'These credentials do not match an administrator or an authorized dashboard account.',
         ])->onlyInput('email', 'remember');
     }
 

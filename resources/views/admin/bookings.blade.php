@@ -65,6 +65,10 @@
                     <td class="px-6 py-3">
                         @if($booking->status === 'pending')
                             <span class="px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-800">Pending</span>
+                        @elseif($booking->status === 'quotation_sent')
+                            <span class="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">Quotation Sent</span>
+                        @elseif($booking->status === 'confirmed')
+                            <span class="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">Confirmed</span>
                         @elseif($booking->status === 'completed')
                             <span class="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">Completed</span>
                         @elseif($booking->status === 'cancelled')
@@ -75,8 +79,18 @@
                     </td>
                     <td class="px-6 py-3 text-slate-500 text-sm">{{ $booking->created_at?->format('M d, Y') ?? '' }}</td>
                     <td class="px-6 py-3">
-                        @if ($booking->status === 'pending' && $booking->package_id !== null)
+                        @if (in_array($booking->status, ['pending', 'quotation_sent'], true) && $booking->package_id !== null)
                             <a href="{{ route('admin.bookings.process', $booking) }}" class="mr-3 text-xs font-semibold text-indigo-600 hover:underline">Process</a>
+                        @endif
+                        @if ($booking->status === 'quotation_sent')
+                            <form action="{{ route('admin.bookings.confirm', $booking) }}" method="POST" class="mb-1">
+                                @csrf
+                                @method('PATCH')
+                                <button type="submit" class="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
+                                    <i class="fa-solid fa-check" aria-hidden="true"></i>
+                                    Confirm Booking
+                                </button>
+                            </form>
                         @endif
                         <a href="{{ route('admin.bookings.show', $booking->id) }}" class="text-xs text-blue-600 hover:underline">View</a>
                     </td>
