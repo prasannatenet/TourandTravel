@@ -19,6 +19,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Support\Facades\Mail;
+use Mockery;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
 class AdminBookingProcessingTest extends TestCase
@@ -40,6 +42,197 @@ class AdminBookingProcessingTest extends TestCase
             ->assertDontSee('Confirmed Guest')
             ->assertSee(route('admin.bookings.process', $pendingBooking));
         $this->assertSame('confirmed', $confirmedBooking->status);
+    }
+
+    public function test_admin_can_open_the_manual_booking_form_from_the_bookings_page(): void
+    {
+        $response = $this->actingAs($this->admin())
+            ->get(route('admin.bookings.index'));
+
+        $response->assertOk()
+            ->assertSee('Add a New Booking')
+            ->assertSee(route('admin.bookings.create'));
+
+        $this->get(route('admin.bookings.create'))
+            ->assertOk()
+            ->assertSee('Add a New Booking')
+            ->assertSee('Customer details')
+            ->assertSee('Trip details')
+            ->assertSee('Create a fully custom package');
+    }
+
+    public function test_admin_can_create_a_fully_custom_booking_and_continue_to_build_its_itinerary(): void
+    {
+        $country = Country::create(['name' => 'Custom Country']);
+        $state = State::create(['country_id' => $country->id, 'name' => 'Custom State']);
+        $city = City::create([
+            'state_id' => $state->id,
+            'name' => 'Custom City',
+            'primary_image' => 'city.jpg',
+            'secondary_images' => [],
+            'short_description' => 'A custom destination.',
+        ]);
+
+        $response = $this->actingAs($this->admin())
+            ->post(route('admin.bookings.store'), [
+                'package_type' => 'custom',
+                'name' => 'Custom Guest',
+                'email' => 'custom@example.com',
+                'mobile' => '123456789',
+                'country' => 'India',
+                'adult_count' => 2,
+                'child_count' => 1,
+                'student_count' => 1,
+                'room_count' => 1,
+                'extra_bed_count' => 0,
+                'custom_package_name' => 'Private Custom Escape',
+                'custom_base_price' => 800,
+                'custom_child_price' => 300,
+                'custom_infant_price' => 100,
+                'custom_category' => 'Family',
+                'custom_tour_type' => 'private',
+                'custom_description' => 'A trip created just for this guest.',
+                'custom_departure_city' => 'Custom City',
+                'custom_discount_percentage' => 10,
+                'custom_tax_percentage' => 5,
+                'custom_departure_date' => '2030-01-01',
+                'custom_days' => 3,
+                'custom_destinations' => [
+                    'country' => [$country->id],
+                    'state' => [$state->id],
+                    'city' => [$city->id],
+                ],
+            ]);
+
+        $booking = Booking::query()->where('email', 'custom@example.com')->sole();
+        $package = $booking->package;
+
+        $response->assertRedirect(route('admin.bookings.process', $booking))
+            ->assertSessionHas('success');
+        $this->assertSame(false, $package->is_active);
+        $this->assertSame('Private Custom Escape', $package->name);
+        $this->assertSame(3, $package->days);
+        $this->assertSame('pending', $booking->status);
+        $this->assertSame(1795.5, (float) $booking->amount);
+        $this->assertSame(3, $booking->itinerary_override['days']);
+        $this->assertSame([], $booking->itinerary_override['items']);
+        $this->assertSame([$country->id], $booking->itinerary_override['custom_package']['destinations']['country']);
+        $this->assertSame([$state->id], $booking->itinerary_override['custom_package']['destinations']['state']);
+        $this->assertSame([$city->id], $booking->itinerary_override['custom_package']['destinations']['city']);
+
+        $this->get(route('admin.bookings.process', $booking))
+            ->assertOk()
+            ->assertSee('Create a complete custom package')
+            ->assertSee('Private Custom Escape')
+            ->assertSee('Custom City');
+    }
+
+    public function test_manual_custom_package_rejects_a_city_outside_its_selected_state(): void
+    {
+        $country = Country::create(['name' => 'Custom Country']);
+        $state = State::create(['country_id' => $country->id, 'name' => 'Selected State']);
+        $otherState = State::create(['country_id' => $country->id, 'name' => 'Other State']);
+        $city = City::create([
+            'state_id' => $otherState->id,
+            'name' => 'Outside City',
+            'primary_image' => 'city.jpg',
+            'secondary_images' => [],
+            'short_description' => 'A city outside the selected state.',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->from(route('admin.bookings.create'))
+            ->post(route('admin.bookings.store'), [
+                'package_type' => 'custom',
+                'name' => 'Custom Guest',
+                'email' => 'custom@example.com',
+                'mobile' => '123456789',
+                'country' => 'India',
+                'adult_count' => 2,
+                'child_count' => 0,
+                'student_count' => 0,
+                'room_count' => 1,
+                'extra_bed_count' => 0,
+                'custom_package_name' => 'Private Custom Escape',
+                'custom_base_price' => 800,
+                'custom_tour_type' => 'private',
+                'custom_departure_city' => 'City',
+                'custom_discount_percentage' => 0,
+                'custom_tax_percentage' => 0,
+                'custom_departure_date' => '2030-01-01',
+                'custom_days' => 2,
+                'custom_destinations' => [
+                    'country' => [$country->id],
+                    'state' => [$state->id],
+                    'city' => [$city->id],
+                ],
+            ])
+            ->assertSessionHasErrors('custom_destinations.city');
+
+        $this->assertDatabaseMissing('bookings', [
+            'email' => 'custom@example.com',
+        ]);
+    }
+
+    public function test_admin_can_create_a_manual_booking_and_continue_to_process_it(): void
+    {
+        $package = $this->createPackage();
+
+        $response = $this->actingAs($this->admin())
+            ->post(route('admin.bookings.store'), [
+                'package_id' => $package->id,
+                'name' => 'Manual Guest',
+                'email' => 'manual@example.com',
+                'mobile' => '123456789',
+                'country' => 'India',
+                'adult_count' => 2,
+                'child_count' => 1,
+                'student_count' => 1,
+                'departure_date' => '2030-01-01',
+                'room_count' => 1,
+                'extra_bed_count' => 0,
+            ]);
+
+        $booking = Booking::query()->where('email', 'manual@example.com')->sole();
+
+        $response->assertRedirect(route('admin.bookings.process', $booking))
+            ->assertSessionHas('success');
+        $this->assertSame('pending', $booking->status);
+        $this->assertSame($package->id, $booking->package_id);
+        $this->assertSame(2, $booking->adult_count);
+        $this->assertSame(1, $booking->child_count);
+        $this->assertSame(1, $booking->student_count);
+        $this->assertSame('2030-01-01', $booking->check_in_date->toDateString());
+        $this->assertSame(2500.0, (float) $booking->amount);
+
+        $this->get(route('admin.bookings.process', $booking))
+            ->assertOk()
+            ->assertSee('Process Booking #'.$booking->id);
+    }
+
+    public function test_manual_booking_requires_valid_customer_and_package_details(): void
+    {
+        $package = $this->createPackage();
+
+        $this->actingAs($this->admin())
+            ->from(route('admin.bookings.create'))
+            ->post(route('admin.bookings.store'), [
+                'package_id' => $package->id,
+                'name' => 'Manual Guest',
+                'email' => 'not-an-email',
+                'mobile' => '123456789',
+                'country' => 'India',
+                'adult_count' => 2,
+                'child_count' => 0,
+                'student_count' => 3,
+                'room_count' => 1,
+                'extra_bed_count' => 0,
+            ])
+            ->assertSessionHasErrors(['email', 'student_count']);
+
+        $this->assertDatabaseMissing('bookings', [
+            'email' => 'not-an-email',
+        ]);
     }
 
     public function test_processing_a_booking_saves_only_its_itinerary_and_recalculates_its_amount(): void
@@ -102,10 +295,11 @@ class AdminBookingProcessingTest extends TestCase
                     ['kind' => 'hotel', 'selection_id' => $replacementRoom->id, 'day_number' => 2, 'start_time' => '15:00', 'nights' => 1],
                 ],
             ])
-            ->assertRedirect(route('admin.bookings.show', $booking));
+            ->assertRedirect(route('admin.bookings.show', $booking))
+            ->assertSessionHas('success');
 
         $updatedBooking = $booking->fresh();
-        $this->assertSame('pending', $updatedBooking->status);
+        $this->assertSame('quotation_sent', $updatedBooking->status);
         $this->assertSame($replacementRoom->id, $updatedBooking->hotel_room_id);
         $this->assertSame('pending', $updatedBooking->hotel_request_status);
         $this->assertNull($updatedBooking->hotel_booking_requested_at);
@@ -139,6 +333,89 @@ class AdminBookingProcessingTest extends TestCase
         $this->assertDatabaseHas('package_plan_items', [
             'id' => $hotelPlanItem->id,
             'hotel_room_id' => $originalRoom->id,
+        ]);
+    }
+
+    public function test_booking_list_shows_confirm_action_after_the_quotation_is_sent(): void
+    {
+        $package = $this->createPackage();
+        $quotedBooking = $this->createBooking($package, 'Quoted Guest', 'quotation_sent');
+        $pendingBooking = $this->createBooking($package, 'Pending Guest');
+
+        $this->actingAs($this->admin())
+            ->get(route('admin.bookings.index'))
+            ->assertOk()
+            ->assertSee('Quotation Sent')
+            ->assertSee('Confirm Booking')
+            ->assertSee(route('admin.bookings.confirm', $quotedBooking))
+            ->assertDontSee(route('admin.bookings.confirm', $pendingBooking));
+
+        $this->get(route('admin.bookings.process', $quotedBooking))->assertOk();
+    }
+
+    public function test_admin_can_confirm_a_booking_after_the_quotation_was_sent(): void
+    {
+        $booking = $this->createBooking($this->createPackage(), 'Quoted Guest', 'quotation_sent');
+
+        $this->actingAs($this->admin())
+            ->patch(route('admin.bookings.confirm', $booking))
+            ->assertRedirect(route('admin.bookings.show', $booking))
+            ->assertSessionHas('success', 'Booking #'.$booking->id.' has been confirmed.');
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => 'confirmed',
+        ]);
+    }
+
+    public function test_admin_cannot_confirm_a_booking_before_its_quotation_is_sent(): void
+    {
+        $booking = $this->createBooking($this->createPackage());
+
+        $this->actingAs($this->admin())
+            ->patch(route('admin.bookings.confirm', $booking))
+            ->assertUnprocessable();
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_failed_quotation_email_does_not_mark_booking_as_quoted(): void
+    {
+        $booking = $this->createBooking($this->createPackage());
+        $mailer = Mockery::mock();
+        $mailer->shouldReceive('to')
+            ->once()
+            ->with($booking->email)
+            ->andReturnSelf();
+        $mailer->shouldReceive('send')
+            ->once()
+            ->with(Mockery::type(BookingQuotationMail::class))
+            ->andThrow(new TransportException('SMTP unavailable'));
+        Mail::shouldReceive('mailer')
+            ->once()
+            ->with('smtp')
+            ->andReturn($mailer);
+
+        $this->actingAs($this->admin())
+            ->from(route('admin.bookings.process', $booking))
+            ->put(route('admin.bookings.process.update', $booking), [
+                'package_id' => $booking->package_id,
+                'package_mode' => 'current',
+                'days' => 2,
+            ])
+            ->assertRedirect(route('admin.bookings.show', $booking))
+            ->assertSessionHas('error');
+
+        $this->get(route('admin.bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('quotation email could not be sent');
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $booking->id,
+            'status' => 'pending',
         ]);
     }
 
@@ -557,6 +834,14 @@ class AdminBookingProcessingTest extends TestCase
 
         $this->actingAs(User::factory()->create(['is_admin' => false]))
             ->get(route('admin.bookings.process', $booking))
+            ->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['is_admin' => false]))
+            ->get(route('admin.bookings.create'))
+            ->assertForbidden();
+
+        $this->actingAs(User::factory()->create(['is_admin' => false]))
+            ->post(route('admin.bookings.store'), ['package_type' => 'custom'])
             ->assertForbidden();
     }
 

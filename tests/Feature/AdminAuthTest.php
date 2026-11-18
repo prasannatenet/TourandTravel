@@ -35,11 +35,38 @@ class AdminAuthTest extends TestCase
         $this->assertAuthenticatedAs($admin);
     }
 
+    public function test_regular_user_cannot_login_to_the_admin_dashboard(): void
+    {
+        User::factory()->create([
+            'email' => 'user@tourtravel.com',
+            'password' => bcrypt('User@123456'),
+            'is_admin' => false,
+        ]);
+
+        $this->post(route('admin.login.post'), [
+            'email' => 'user@tourtravel.com',
+            'password' => 'User@123456',
+        ])
+            ->assertRedirect('/admin/login')
+            ->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+    }
+
     public function test_non_admin_cannot_access_dashboard(): void
     {
         $user = User::factory()->create(['is_admin' => false]);
 
         $this->actingAs($user)->get(route('admin.dashboard'))->assertForbidden();
+    }
+
+    public function test_admin_dashboard_loads_with_permission_tables(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertOk();
     }
 
     public function test_guest_is_redirected_from_dashboard(): void
