@@ -10,6 +10,14 @@
         <p class="text-slate-600">Explore our curated tour packages across India and beyond.</p>
     </div>
 
+    <div class="mb-8 flex flex-wrap gap-2 border-b border-slate-200" role="tablist" aria-label="Package options">
+        <a href="{{ route('packages.index') }}" role="tab" aria-selected="true" class="rounded-t-lg border border-b-0 border-slate-200 bg-white px-4 py-3 text-sm font-bold text-indigo-700">Explore packages</a>
+        <a href="{{ route('custom-packages.create') }}" role="tab" aria-selected="false" class="rounded-t-lg border border-b-0 border-transparent bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700">Build my own package</a>
+        @if(session()->has('custom_package_owner_token'))
+            <a href="{{ route('custom-packages.index') }}" class="rounded-t-lg border border-b-0 border-transparent bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700">My custom packages</a>
+        @endif
+    </div>
+
     <!-- Search & Filter Bar -->
     <div class="bg-slate-50 rounded-2xl border border-slate-200 p-6 mb-8 shadow-sm">
         <form method="GET" action="{{ route('packages.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -82,7 +90,11 @@
             <article class="group rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
                 <!-- Package Image -->
                 <div class="relative h-48 overflow-hidden">
-                    @if($package->galleryImages->first())
+                    @if($package->video)
+                        <video class="h-full w-full object-cover group-hover:scale-105 transition duration-300" autoplay muted loop playsinline preload="metadata" aria-label="{{ $package->name }} package video">
+                            <source src="{{ asset('storage/'.$package->video) }}">
+                        </video>
+                    @elseif($package->galleryImages->first())
                         <img src="{{ asset('storage/'.$package->galleryImages->first()->image) }}" alt="{{ $package->name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                     @elseif($package->image)
                         <img src="{{ asset('storage/'.$package->image) }}" alt="{{ $package->name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">

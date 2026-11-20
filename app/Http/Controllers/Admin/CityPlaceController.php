@@ -142,9 +142,9 @@ class CityPlaceController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'place_description' => ['required', 'string', 'max:500'],
             'description' => ['required', 'string'],
-            'primary_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
-            'secondary_images' => ['nullable', 'array', 'max:8'],
-            'secondary_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'primary_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'secondary_images' => ['nullable', 'array', 'max:4'],
+            'secondary_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'visit_duration_hours' => ['required', 'numeric', 'min:0.5', 'max:72'],
             'best_time_to_visit' => ['required', Rule::in(CityPlace::BEST_TIMES)],
             'price_child' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
@@ -206,9 +206,9 @@ class CityPlaceController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'place_description' => ['required', 'string', 'max:500'],
             'description' => ['required', 'string'],
-            'primary_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
-            'secondary_images' => ['nullable', 'array', 'max:8'],
-            'secondary_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'primary_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'secondary_images' => ['nullable', 'array', 'max:4'],
+            'secondary_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'visit_duration_hours' => ['required', 'numeric', 'min:0.5', 'max:72'],
             'best_time_to_visit' => ['required', Rule::in(CityPlace::BEST_TIMES)],
             'price_child' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
@@ -233,6 +233,13 @@ class CityPlaceController extends Controller
 
         if (CityPlace::where('city_id', $validated['city_id'])->where('name', $validated['name'])->where('id', '!=', $place->id)->exists()) {
             return back()->withErrors(['name' => 'This place already exists in the selected city.'])->withInput();
+        }
+
+        $retainedSecondaryCount = count(array_diff($place->secondary_images ?? [], $validated['remove_secondary'] ?? []));
+        $newSecondaryCount = count($request->file('secondary_images', []) ?? []);
+
+        if ($retainedSecondaryCount + $newSecondaryCount > 4) {
+            return back()->withErrors(['secondary_images' => 'A place can have up to 5 images total, including the primary image.'])->withInput();
         }
 
         if ($request->hasFile('primary_image')) {

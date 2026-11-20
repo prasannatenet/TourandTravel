@@ -31,10 +31,10 @@
 <div><label class="block text-sm font-semibold mb-1">Place Name *</label><input name="name" value="{{ old('name', $place->name) }}" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
 <div><label class="block text-sm font-semibold mb-1">Place Description *</label><textarea name="place_description" required maxlength="500" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm">{{ old('place_description', $place->place_description) }}</textarea></div>
 <div><label class="block text-sm font-semibold mb-1">Description *</label><textarea name="description" required rows="4" class="w-full border rounded-lg px-3 py-2 text-sm">{{ old('description', $place->description) }}</textarea></div>
-<div><label class="block text-sm font-semibold mb-1">Primary Img (blank = keep)</label><div class="flex items-center gap-3"><img src="{{ $place->primaryImageUrl() }}" class="h-20 w-28 rounded-lg object-cover"><input type="file" name="primary_image" accept="image/*" class="text-sm"></div></div>
+<div><label class="block text-sm font-semibold mb-1">Primary Img (blank = keep, max 2 MB)</label><div class="flex items-center gap-3"><img src="{{ $place->primaryImageUrl() }}" class="h-20 w-28 rounded-lg object-cover"><input type="file" name="primary_image" accept="image/*" data-place-image-input class="text-sm"></div></div>
 <div><label class="block text-sm font-semibold mb-1">Gallery (tick remove / add more)</label>
 <div class="flex gap-2 flex-wrap mb-2">@foreach (($place->secondary_images ?? []) as $img)<label class="relative block"><img src="{{ asset('storage/'.$img) }}" class="h-16 w-24 rounded-lg object-cover"><span class="absolute top-1 left-1 bg-white rounded px-1 text-xs"><input type="checkbox" name="remove_secondary[]" value="{{ $img }}"> remove</span></label>@endforeach</div>
-<input type="file" name="secondary_images[]" accept="image/*" multiple class="w-full text-sm"></div>
+<input type="file" name="secondary_images[]" accept="image/*" multiple data-place-gallery-input class="w-full text-sm"><p class="text-xs text-slate-500 mt-1">Maximum 5 images total, including the primary image; each image must be 2 MB or smaller.</p></div>
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 <div><label class="block text-sm font-semibold mb-1">Visit Duration (hours) *</label><input type="number" name="visit_duration_hours" value="{{ old('visit_duration_hours', $place->visit_duration_hours) }}" required min="0.5" max="72" step="0.5" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
 <div><label class="block text-sm font-semibold mb-1">Best Time *</label>
@@ -51,4 +51,25 @@
 @endsection
 @push('scripts')
 @include('admin.destinations.places._cascade-script')
+<script>
+document.querySelector('form[action="{{ route('admin.places.update', $place) }}"]')?.addEventListener('submit', (event) => {
+    const maxBytes = 2 * 1024 * 1024;
+    const primaryImage = document.querySelector('[data-place-image-input]')?.files?.[0];
+    const galleryImages = [...(document.querySelector('[data-place-gallery-input]')?.files ?? [])];
+    const retainedGalleryCount = [...document.querySelectorAll('input[name="remove_secondary[]"]')]
+        .filter((checkbox) => !checkbox.checked).length;
+    const oversizedImage = [primaryImage, ...galleryImages].find((image) => image && image.size > maxBytes);
+
+    if (oversizedImage) {
+        event.preventDefault();
+        alert('Each place image must be 2 MB or smaller.');
+        return;
+    }
+
+    if (retainedGalleryCount + galleryImages.length > 4) {
+        event.preventDefault();
+        alert('A place can have up to 5 images total, including the primary image. Remove existing gallery images before adding more.');
+    }
+});
+</script>
 @endpush

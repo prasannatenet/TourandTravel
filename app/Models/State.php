@@ -8,7 +8,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class State extends Model
 {
-    protected $fillable = ['country_id', 'name'];
+    protected $fillable = ['country_id', 'name', 'price_per_day'];
+
+    protected function casts(): array
+    {
+        return [
+            'price_per_day' => 'decimal:2',
+        ];
+    }
 
     public function country(): BelongsTo
     {

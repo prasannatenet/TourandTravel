@@ -1,0 +1,105 @@
+:root {
+    /* Primary Colors */
+    --primary-color: #4b77d4;
+    --primary-light: #eaf0fc;
+    --secondary-color: #ffffff;
+    --dark-color: #3c3b3b;
+
+    /* Accent Colors */
+    --accent-orange: #f85103;
+    --accent-orange-light: #fff0e8;
+
+    --accent-yellow: #fba71e;
+    --accent-yellow-light: #fff5df;
+
+    /* Background Colors */
+    --bg-color: #ffffff;
+    --light-bg: #f5f7fc;
+
+    /* Text Colors */
+    --heading-color: #3c3b3b;
+    --text-color: #666666;
+    --white-color: #ffffff;
+
+    /* Typography */
+    --heading-font: 'Raleway', sans-serif;
+    --body-font: 'Open Sans', sans-serif;
+
+    /* Font Weights */
+    --heading-weight: 700;
+    --body-weight: 400;
+
+    /* Button Colors */
+    --btn-bg: #4b77d4;
+    --btn-hover: #365fb8;
+    --btn-text: #ffffff;
+
+    /* Border & Shadow */
+    --border-color: #e5e7eb;
+    --shadow: 0 4px 20px rgba(60, 59, 59, 0.08);
+
+    /* Transitions */
+    --transition: all 0.3s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+span.accent-orange { color: var(--accent-orange)}
+
+body { font-family: var(--body-font); font-size: 1.6rem; font-weight: var(--body-weight); color: var(--text-color); background: var(--bg-color); margin: 0; padding: 0; }
+
+.container { width: 100%; max-width: 140rem; padding: 0 2rem; margin: 0 auto; }
+
+html { font-size: 62.5%; }
+
+h1, h2, h3, h4, h5, h6 { font-family: var(--heading-font); font-weight: var(--heading-weight); color: var(--heading-color); }
+
+h1 { font-size: 4.8rem; }
+h2 { font-size: 3.6rem; }
+h3 { font-size: 2.8rem; }
+h4 { font-size: 2.2rem; }
+
+p { font-size: 1.6rem; line-height: 1.7; }
+
+.mt-5 { margin-top: 5px;}
+.mt-10 { margin-top: 10px;}
+.mt-20 { margin-top: 20px;}
+.mt-30 { margin-top: 30px;}
+.mt-40 { margin-top: 4rem;}
+.mt-50 { margin-top: 5rem;}
+.mt-60 { margin-top: 6rem;}
+
+.mb-5 { margin-bottom: 5px;}
+.mb-10 { margin-bottom: 10px;}
+.mb-20 { margin-bottom: 20px;}
+.mb-30 { margin-bottom: 30px;}
+.mb-40 { margin-bottom: 4rem;}
+.mb-50 { margin-bottom: 5rem;}
+.mb-60 { margin-bottom: 6rem;}
+
+
+html {
+    scrollbar-color: var(--primary-color) #f1f1f1;
+    scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border: 2px solid #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #1b335a;
+}

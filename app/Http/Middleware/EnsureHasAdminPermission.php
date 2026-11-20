@@ -41,11 +41,13 @@ class EnsureHasAdminPermission
             'countries', 'states', 'cities', 'places' => 'destinations',
             'inclusions' => 'inclusions',
             'packages' => 'packages',
+            'custom-package-requests' => 'packages',
             'hotels' => 'hotels',
             'bookings', 'hotel-booking-requests' => 'bookings',
             'cabs' => 'cabs',
             'cab-associates' => 'cab-associates',
             'email-settings' => 'email-settings',
+            'company-profile' => 'company-profile',
             default => null,
         };
 

@@ -114,7 +114,7 @@
             </section>
 
             <div class="border-t border-slate-100 pt-5">
-                <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-200">
+                <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-200" style="background: #4b77d4">
                     <i class="fa-solid fa-plus"></i>
                     Create role
                 </button>

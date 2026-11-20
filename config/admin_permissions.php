@@ -77,4 +77,11 @@ return [
             'update' => 'Update',
         ],
     ],
+    'company-profile' => [
+        'label' => 'Company Profile',
+        'permissions' => [
+            'view' => 'View',
+            'update' => 'Update',
+        ],
+    ],
 ];

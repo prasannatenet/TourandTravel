@@ -219,28 +219,43 @@
                     <div class="mb-4 flex items-center gap-3">
                         <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-xs font-bold text-amber-700">06</span>
                         <div>
-                            <h3 class="text-lg font-bold text-slate-900">Package images</h3>
-                            <p class="text-xs text-slate-500">Replace the cover image or add more gallery photos.</p>
+                            <h3 class="text-lg font-bold text-slate-900">Package cover media</h3>
+                            <p class="text-xs text-slate-500">Keep the current cover, or replace it with one photo or one video.</p>
                         </div>
                     </div>
 
                     <div class="space-y-5">
-                        @if($package->image)
+                        @if($package->image || $package->video)
                             <div class="rounded-[18px] border border-slate-200 bg-slate-50 p-3">
-                                <p class="mb-2 text-sm font-semibold text-slate-700">Current cover image</p>
-                                <img src="{{ asset('storage/'.$package->image) }}" alt="{{ $package->name }} cover" class="h-28 w-full rounded-xl object-cover shadow-sm">
+                                <p class="mb-2 text-sm font-semibold text-slate-700">Current cover {{ $package->video ? 'video' : 'photo' }}</p>
+                                @if($package->video)
+                                    <video controls preload="metadata" class="h-40 w-full rounded-xl bg-slate-900 object-contain shadow-sm">
+                                        <source src="{{ asset('storage/'.$package->video) }}">
+                                        Your browser does not support video playback.
+                                    </video>
+                                @else
+                                    <img src="{{ asset('storage/'.$package->image) }}" alt="{{ $package->name }} cover" class="h-28 w-full rounded-xl object-cover shadow-sm">
+                                @endif
                             </div>
                         @endif
 
-                        <div class="rounded-[18px] border border-dashed border-slate-300 bg-slate-50/70 p-4 text-center">
-                            <div class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm text-indigo-600">
-                                <i class="fa-solid fa-cloud-arrow-up"></i>
-                            </div>
-                            <p class="mt-3 text-sm font-semibold text-slate-700">Replace cover image</p>
-                            <p class="mt-1 text-xs text-slate-400">Select a JPG, PNG, or WebP image from your device</p>
-                            <input type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="mt-4 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-indigo-700">
-                            @error('image') <p class="mt-2 text-xs font-medium text-red-600">{{ $message }}</p> @enderror
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <label class="rounded-[18px] border border-dashed border-slate-300 bg-slate-50/70 p-4 text-center">
+                                <span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-indigo-600 shadow-sm"><i class="fa-solid fa-image"></i></span>
+                                <span class="mt-3 block text-sm font-semibold text-slate-700">Replace with a photo</span>
+                                <span class="mt-1 block text-xs text-slate-400">JPG, PNG, WebP · up to 4 MB</span>
+                                <input id="package-cover-image" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="mt-4 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white">
+                            </label>
+                            <label class="rounded-[18px] border border-dashed border-slate-300 bg-slate-50/70 p-4 text-center">
+                                <span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-indigo-600 shadow-sm"><i class="fa-solid fa-video"></i></span>
+                                <span class="mt-3 block text-sm font-semibold text-slate-700">Replace with a video</span>
+                                <span class="mt-1 block text-xs text-slate-400">MP4, MOV, WebM · up to 5 MB</span>
+                                <input id="package-cover-video" type="file" name="video" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm" class="mt-4 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white">
+                            </label>
                         </div>
+                        <p class="text-[11px] text-slate-500">Choose only one replacement. The current cover media will be retained if both fields are left blank.</p>
+                        @error('image') <p class="text-xs font-medium text-red-600">{{ $message }}</p> @enderror
+                        @error('video') <p class="text-xs font-medium text-red-600">{{ $message }}</p> @enderror
 
                         <div class="space-y-3">
                             <p class="text-sm font-semibold text-slate-700">Gallery photos</p>
@@ -280,3 +295,18 @@
     </form>
 </div>
 @endsection
+
+@push('scripts')
+    <script>
+        (() => {
+            const imageInput = document.getElementById('package-cover-image');
+            const videoInput = document.getElementById('package-cover-video');
+            imageInput?.addEventListener('change', () => {
+                if (imageInput.files.length) videoInput.value = '';
+            });
+            videoInput?.addEventListener('change', () => {
+                if (videoInput.files.length) imageInput.value = '';
+            });
+        })();
+    </script>
+@endpush

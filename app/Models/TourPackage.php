@@ -26,6 +26,7 @@ class TourPackage extends Model
         'views',
         'is_active',
         'image',
+        'video',
     ];
 
     protected static function booted(): void
@@ -98,6 +99,16 @@ class TourPackage extends Model
         return $this->planItems
             ->where('item_type', 'hotel')
             ->sum(fn (PackagePlanItem $item): float => (float) ($item->hotelRoom?->customer_adult_price ?? 0) * (int) ($item->nights ?? 1));
+    }
+
+    public function stateDailyCostPerAdult(): float
+    {
+        $this->loadMissing('planItems.place.city.state');
+
+        return $this->planItems
+            ->filter(fn (PackagePlanItem $item): bool => $item->place?->city?->state !== null)
+            ->unique(fn (PackagePlanItem $item): string => $item->day_number.'-'.$item->place->city->state->id)
+            ->sum(fn (PackagePlanItem $item): float => (float) $item->place->city->state->price_per_day);
     }
 
     public function galleryImages(): HasMany

@@ -46,6 +46,7 @@ class StateController extends Controller
         $validated = $request->validate([
             'country_id' => ['required', 'exists:countries,id'],
             'name' => ['required', 'string', 'max:100'],
+            'price_per_day' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
         ]);
 
         if (State::where('country_id', $validated['country_id'])->where('name', $validated['name'])->exists()) {
@@ -69,6 +70,7 @@ class StateController extends Controller
         $validated = $request->validate([
             'country_id' => ['required', 'exists:countries,id'],
             'name' => ['required', 'string', 'max:100'],
+            'price_per_day' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
         ]);
 
         if (State::where('country_id', $validated['country_id'])->where('name', $validated['name'])->where('id', '!=', $state->id)->exists()) {

@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\City;
 use App\Models\CityPlace;
 use App\Models\Country;
+use App\Models\CustomPackageRequest;
 use App\Models\HotelRoom;
 use App\Models\PackageInclusion;
 use App\Models\PackageInclusionPackage;
@@ -29,12 +30,16 @@ use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class BookingsController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         $bookings = Booking::with('package')->latest('created_at')->paginate(20);
+        $customPackageRequests = CustomPackageRequest::query()
+            ->where('status', '!=', 'draft')
+            ->latest('submitted_at')
+            ->paginate(20, ['*'], 'custom_page');
         $processing = false;
 
-        return view('admin.bookings', compact('bookings', 'processing'));
+        return view('admin.bookings', compact('bookings', 'customPackageRequests', 'processing'));
     }
 
     public function processing(): View
@@ -44,9 +49,13 @@ class BookingsController extends Controller
             ->whereNotNull('package_id')
             ->latest('created_at')
             ->paginate(20);
+        $customPackageRequests = CustomPackageRequest::query()
+            ->where('status', 'pending')
+            ->latest('submitted_at')
+            ->paginate(20, ['*'], 'custom_page');
         $processing = true;
 
-        return view('admin.bookings', compact('bookings', 'processing'));
+        return view('admin.bookings', compact('bookings', 'customPackageRequests', 'processing'));
     }
 
     public function create(): View

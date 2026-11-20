@@ -28,14 +28,14 @@
 </div>
 </form>
 <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-<table class="w-full text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="text-left px-6 py-3">State</th><th class="text-left px-6 py-3">Country</th><th class="text-left px-6 py-3">Cities</th><th class="text-left px-6 py-3">Actions</th></tr></thead>
+<table class="w-full text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th class="text-left px-6 py-3">State</th><th class="text-left px-6 py-3">Country</th><th class="text-left px-6 py-3">Price per person / day</th><th class="text-left px-6 py-3">Cities</th><th class="text-left px-6 py-3">Actions</th></tr></thead>
 <tbody class="divide-y">
 @forelse ($states as $s)
-<tr class="hover:bg-slate-50"><td class="px-6 py-3 font-semibold">{{ $s->name }}</td><td class="px-6 py-3">{{ $s->country->name }}</td><td class="px-6 py-3">{{ $s->cities_count }}</td>
+<tr class="hover:bg-slate-50"><td class="px-6 py-3 font-semibold">{{ $s->name }}</td><td class="px-6 py-3">{{ $s->country->name }}</td><td class="px-6 py-3">₹{{ number_format((float) $s->price_per_day, 2) }}</td><td class="px-6 py-3">{{ $s->cities_count }}</td>
 <td class="px-6 py-3 flex gap-2"><a href="{{ route('admin.states.edit', $s) }}" class="px-3 py-1 bg-slate-900 text-white text-xs rounded-lg">Edit</a>
 <form method="POST" action="{{ route('admin.states.destroy', $s) }}" onsubmit="return confirm('Delete state + cities?')">@csrf @method('DELETE')<button class="px-3 py-1 bg-red-50 text-red-600 text-xs font-semibold rounded-lg">Delete</button></form></td></tr>
 @empty
-<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">No states yet. Create a country first.</td></tr>
+<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500">No states yet. Create a country first.</td></tr>
 @endforelse
 </tbody></table>
 </div>

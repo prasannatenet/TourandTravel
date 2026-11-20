@@ -220,7 +220,7 @@
                     <form action="{{ route('admin.bookings.confirm', $booking->id) }}" method="POST" class="flex gap-2">
                         @csrf
                         @method('PATCH')
-                        <button type="submit" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                        <button type="submit" class="flex-1 rounded-lg bg-[#4b77d4] px-4 py-2 text-white transition hover:bg-[#3d67bf]">
                             <i class="fa-solid fa-check mr-2"></i> Confirm Booking
                         </button>
                     </form>

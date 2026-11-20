@@ -15,7 +15,7 @@
     }
 
     .mmt-holiday-page .container-main {
-        max-width: 1220px;
+        max-width: 94rem;
         margin: auto;
         padding: 18px 16px 60px;
     }
@@ -79,7 +79,7 @@
     /* MakeMyTrip Asymmetric Hero Gallery */
     .mmt-gallery {
         display: grid;
-        grid-template-columns: 2fr 1fr;
+        grid-template-columns: 1.3fr 1fr;
         gap: 10px;
         height: 380px;
         border-radius: 16px;
@@ -94,6 +94,13 @@
         overflow: hidden;
         background: #e2e8f0;
         cursor: pointer;
+    }
+
+    .mmt-gallery-thumb {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 0;
     }
 
     .mmt-gallery-main img,
@@ -111,9 +118,18 @@
 
     .mmt-gallery-side {
         display: grid;
-        grid-template-rows: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
         gap: 10px;
         min-height: 0;
+    }
+
+    .mmt-gallery-thumb img {
+        transition: opacity .35s ease, transform .45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .mmt-gallery-thumb img.is-changing {
+        opacity: .25;
     }
 
     /* Sticky Navigation Tabs (MMT Anchor Bar) */
@@ -523,14 +539,51 @@
 
     @media (max-width: 640px) {
         .mmt-gallery {
-            height: 220px;
+            height: auto;
             grid-template-columns: 1fr;
         }
+        .mmt-gallery-main { height: 220px; }
         .mmt-gallery-side {
-            display: none;
+            display: grid;
+            grid-template-rows: repeat(2, 90px);
         }
         .container-main {
             padding: 12px 10px 90px !important;
+        }
+
+        .mmt-mobile-bar {
+            gap: 10px;
+            padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+        }
+
+        .mmt-mobile-bar > div {
+            min-width: 0;
+        }
+
+        .mmt-mobile-bar .mmt-btn-primary {
+            flex-shrink: 0;
+            padding-right: 14px;
+            padding-left: 14px;
+        }
+
+        .mmt-change-modal-content {
+            width: 100%;
+            max-width: 720px;
+            height: min(650px, 88dvh);
+            border-radius: 14px;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .mmt-holiday-page .container-main {
+            padding-right: 8px !important;
+            padding-left: 8px !important;
+        }
+
+        .mmt-mobile-bar .mmt-btn-primary {
+            font-size: 11px;
+            padding-right: 10px;
+            padding-left: 10px;
         }
     }
 </style>
@@ -552,6 +605,17 @@
     }
 
     $galleryImages = $galleryImages->unique()->values();
+    $gallerySideImages = $galleryImages->map(fn ($image, $index): array => [
+        'src' => asset('storage/'.$image),
+        'index' => $index,
+    ]);
+    if (!$package->video) {
+        $gallerySideImages = $gallerySideImages->skip(1)->values();
+    }
+    $gallerySideSource = $gallerySideImages->values();
+    while ($gallerySideImages->isNotEmpty() && $gallerySideImages->count() < 4) {
+        $gallerySideImages->push($gallerySideSource->get($gallerySideImages->count() % $gallerySideSource->count()));
+    }
 
     $transferItems = $package->planItems->filter(function ($item) {
         $name = strtolower(
@@ -589,11 +653,27 @@
     $planPricingItems = $package->planItems->map(fn ($item) => [
         'id' => $item->id,
         'day' => $item->day_number,
+        'start_time' => substr((string) $item->start_time, 0, 5),
+        'position' => (int) $item->position,
         'kind' => $item->item_type === 'hotel' ? 'hotel' : ($item->package_inclusion_package_id ? 'inclusion' : 'place'),
         'can_change' => (bool) $item->show_charge_button && (bool) $item->place,
         'current_place_id' => $item->place?->id,
         'original_place_id' => $item->place?->id,
         'place_price' => (float) ($item->place?->price_per_person ?? 0),
+        'adult_india' => (float) ($item->place?->adultPriceForCountry('India') ?? 0),
+        'original_adult_india' => (float) ($item->place?->adultPriceForCountry('India') ?? 0),
+        'adult_foreigner' => (float) ($item->place?->adultPriceForCountry('USA') ?? 0),
+        'original_adult_foreigner' => (float) ($item->place?->adultPriceForCountry('USA') ?? 0),
+        'child_price' => (float) ($item->place?->childPrice() ?? 0),
+        'original_child_price' => (float) ($item->place?->childPrice() ?? 0),
+        'student_india' => (float) ($item->place?->studentPriceForCountry('India') ?? 0),
+        'original_student_india' => (float) ($item->place?->studentPriceForCountry('India') ?? 0),
+        'student_foreigner' => (float) ($item->place?->studentPriceForCountry('USA') ?? 0),
+        'original_student_foreigner' => (float) ($item->place?->studentPriceForCountry('USA') ?? 0),
+        'state_id' => (int) ($item->place?->city?->state?->id ?? 0),
+        'original_state_id' => (int) ($item->place?->city?->state?->id ?? 0),
+        'state_daily_price' => (float) ($item->place?->city?->state?->price_per_day ?? 0),
+        'original_state_daily_price' => (float) ($item->place?->city?->state?->price_per_day ?? 0),
         'original_place_price' => (float) ($item->place?->price_per_person ?? 0),
         'additional_price' => (float) ($item->additional_price ?? 0),
         'hotel_adult_price' => (float) ($item->hotelRoom?->customer_adult_price ?? 0),
@@ -680,8 +760,13 @@
 
         {{-- MakeMyTrip 3-Photo Hero Grid --}}
         <div class="mmt-gallery mb-6">
-            <div class="mmt-gallery-main" onclick="openGallery(0)">
-                @if($galleryImages->isNotEmpty())
+            <div class="mmt-gallery-main" @if($galleryImages->isNotEmpty()) onclick="openGallery(0)" @endif>
+                @if($package->video)
+                    <video class="h-full w-full object-cover" autoplay muted loop playsinline controls preload="metadata" aria-label="{{ $package->name }} package video" onclick="event.stopPropagation()">
+                        <source src="{{ asset('storage/'.$package->video) }}">
+                        Your browser does not support video playback.
+                    </video>
+                @elseif($galleryImages->isNotEmpty())
                     <img src="{{ asset('storage/'.$galleryImages[0]) }}" alt="{{ $package->name }}">
                 @else
                     <div class="h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100">
@@ -690,32 +775,20 @@
                     </div>
                 @endif
 
+                @if($galleryImages->isNotEmpty())
                 <div class="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md text-white rounded-lg px-3.5 py-1.5 text-xs font-bold flex items-center gap-2 shadow-lg">
                     <i class="fa-regular fa-images"></i>
                     <span>View All Photos ({{ max(1, $galleryImages->count()) }})</span>
                 </div>
+                @endif
             </div>
 
             <div class="mmt-gallery-side">
-                @for($i = 1; $i <= 2; $i++)
-                    <div class="mmt-gallery-thumb" onclick="openGallery({{ $i < $galleryImages->count() ? $i : 0 }})">
-                        @if(isset($galleryImages[$i]))
-                            <img src="{{ asset('storage/'.$galleryImages[$i]) }}" alt="Photo {{ $i + 1 }}">
-                        @elseif(isset($galleryImages[0]))
-                            <img src="{{ asset('storage/'.$galleryImages[0]) }}" alt="{{ $package->name }}">
-                        @else
-                            <div class="h-full flex items-center justify-center text-slate-400 bg-slate-100">
-                                <i class="fa-regular fa-image text-2xl text-slate-300"></i>
-                            </div>
-                        @endif
-
-                        @if($i === 2 && $galleryImages->count() > 3)
-                            <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center text-white font-extrabold text-sm">
-                                +{{ $galleryImages->count() - 3 }} More Photos
-                            </div>
-                        @endif
-                    </div>
-                @endfor
+                @foreach($gallerySideImages->take(4) as $slot => $galleryImage)
+                    <button type="button" class="mmt-gallery-thumb" data-gallery-thumb-slot="{{ $slot }}" data-gallery-index="{{ $galleryImage['index'] }}" aria-label="View package photo {{ $galleryImage['index'] + 1 }}">
+                        <img src="{{ $galleryImage['src'] }}" data-gallery-thumb-image alt="{{ $package->name }} photo {{ $galleryImage['index'] + 1 }}">
+                    </button>
+                @endforeach
             </div>
         </div>
 
@@ -794,7 +867,7 @@
                                 Detailed Day-wise Itinerary
                             </h2>
                             <p class="text-xs text-slate-500 mt-0.5">
-                                Customizable itinerary. You can change activities where indicated.
+                                Customize each day by changing, removing, or adding sightseeing activities.
                             </p>
                         </div>
                         <span class="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
@@ -827,6 +900,7 @@
                                 $dayPlace = $items->first(fn ($i) => $i->place)?->place;
                                 $dayHotel = $items->first(fn ($i) => $i->item_type === 'hotel')?->hotelRoom?->hotel;
                                 $dayCityName = $dayPlace?->city?->name ?? $dayHotel?->city?->name ?? 'Sightseeing';
+                                $dayCityId = $dayPlace?->city_id ?? $dayHotel?->city_id;
                             @endphp
 
                             <div id="day-panel-{{ $dayNumber }}" class="day-panel {{ $loop->first ? '' : 'hidden' }}">
@@ -846,7 +920,7 @@
                                             </p>
                                         </div>
                                     </div>
-                                    <span class="text-xs font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                                    <span id="day-stop-count-{{ $dayNumber }}" class="text-xs font-bold text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
                                         {{ $items->count() }} Planned Stops
                                     </span>
                                 </div>
@@ -933,6 +1007,13 @@
                                                             </button>
                                                         </div>
                                                     @endif
+                                                    @if(!$isHotel && !$isInclusion && $item->place)
+                                                        <button type="button"
+                                                            class="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-50"
+                                                            onclick="removeDayActivity({{ $item->id }})">
+                                                            <i class="fa-regular fa-trash-can mr-1"></i>Remove
+                                                        </button>
+                                                    @endif
                                                 </div>
 
                                                 {{-- Stop Title & City --}}
@@ -1018,19 +1099,36 @@
                                         </div>
                                     @endforeach
                                 </div>
+                                <div class="mt-4 rounded-xl border border-dashed border-blue-200 bg-blue-50/50 p-4">
+                                    <label for="add-activity-{{ $dayNumber }}" class="mb-2 block text-xs font-bold text-slate-700">Add an activity to Day {{ $dayNumber }}</label>
+                                    <div class="flex flex-col gap-2 sm:flex-row">
+                                        <select id="add-activity-{{ $dayNumber }}" class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm">
+                                            <option value="">Choose an activity{{ $dayPlace?->city?->name ? ' in '.$dayPlace->city->name : '' }}...</option>
+                                            @foreach($swappablePlaces as $availablePlace)
+                                                @if($availablePlace['city_id'] === $dayCityId)
+                                                    <option value="{{ $availablePlace['id'] }}">{{ $availablePlace['name'] }} · {{ $availablePlace['city_name'] }} · ₹{{ number_format((float) $availablePlace['price'], 0) }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                        <button type="button" onclick="addDayActivity({{ $dayNumber }}, {{ $dayCityId ?? 'null' }})" class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700">
+                                            <i class="fa-solid fa-plus"></i>Add activity
+                                        </button>
+                                    </div>
+                                    <p class="mt-2 text-[11px] text-slate-500">Added activities will be included in the itinerary sent with your booking request.</p>
+                                </div>
                             </div>
                         @endforeach
                     </div>
                 </section>
 
                 {{-- SECTION 2: INCLUSIONS & EXCLUSIONS (MakeMyTrip 2-Column Standard) --}}
-                <section id="section-inclusions" class="panel p-5 md:p-6 scroll-mt-20">
+                {{-- <section id="section-inclusions" class="panel p-5 md:p-6 scroll-mt-20">
                     <h2 class="text-lg md:text-xl font-black text-slate-900 mb-4">
                         Inclusions &amp; Exclusions
                     </h2>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {{-- What's Included --}}
+
                         <div class="border border-emerald-200 rounded-xl bg-emerald-50/30 p-4">
                             <h3 class="text-sm font-bold text-emerald-800 flex items-center gap-2 mb-3">
                                 <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
@@ -1063,7 +1161,7 @@
                             </ul>
                         </div>
 
-                        {{-- What's Excluded --}}
+
                         <div class="border border-rose-200 rounded-xl bg-rose-50/30 p-4">
                             <h3 class="text-sm font-bold text-rose-800 flex items-center gap-2 mb-3">
                                 <i class="fa-solid fa-circle-xmark text-rose-600 text-base"></i>
@@ -1094,10 +1192,10 @@
                             </ul>
                         </div>
                     </div>
-                </section>
+                </section> --}}
 
                 {{-- SECTION 3: ABOUT PACKAGE --}}
-                <section id="section-overview" class="panel p-5 md:p-6 scroll-mt-20">
+                {{-- <section id="section-overview" class="panel p-5 md:p-6 scroll-mt-20">
                     <h2 class="text-lg md:text-xl font-black text-slate-900 mb-3">
                         About {{ $package->name }}
                     </h2>
@@ -1125,10 +1223,10 @@
                             <p class="text-sm font-black text-emerald-700 mt-1">Available</p>
                         </div>
                     </div>
-                </section>
+                </section> --}}
 
                 {{-- SECTION 4: POLICIES --}}
-                <section id="section-policies" class="panel p-5 md:p-6 scroll-mt-20">
+                {{-- <section id="section-policies" class="panel p-5 md:p-6 scroll-mt-20">
                     <h2 class="text-lg md:text-xl font-black text-slate-900 mb-4">
                         Policies &amp; Important Terms
                     </h2>
@@ -1147,7 +1245,7 @@
                             <p>The private cab is at your service as per the scheduled itinerary. Any additional or off-route transfers beyond the itinerary will be charged as per actual meter reading.</p>
                         </div>
                     </div>
-                </section>
+                </section> --}}
 
             </div>
 
@@ -1223,7 +1321,7 @@
                     <div class="p-5 space-y-3">
                         <a href="{{ route('packages.book', $package->slug) }}"
                            class="mmt-btn-primary w-full text-center cursor-pointer"
-                           onclick="event.preventDefault(); window.location.href='{{ route('packages.book', $package->slug) }}'; return false;">
+                           onclick="event.preventDefault(); proceedToBooking('{{ route('packages.book', $package->slug) }}'); return false;">
                             PROCEED TO BOOK
                             <i class="fa-solid fa-arrow-right"></i>
                         </a>
@@ -1454,6 +1552,39 @@
     const galleryImages = @json(
         $galleryImages->map(fn ($image) => asset('storage/'.$image))->values()
     );
+    const gallerySideImages = @json($gallerySideImages->values());
+    const galleryThumbSlots = Array.from(document.querySelectorAll('[data-gallery-thumb-slot]'));
+    let galleryThumbOffset = 0;
+
+    function renderRotatingGalleryThumbs() {
+        if (gallerySideImages.length === 0) return;
+
+        galleryThumbSlots.forEach((thumb, slot) => {
+            const galleryImage = gallerySideImages[(galleryThumbOffset + slot) % gallerySideImages.length];
+            const image = thumb.querySelector('[data-gallery-thumb-image]');
+            if (!galleryImage || !image) return;
+
+            if (image.src !== galleryImage.src) {
+                image.classList.add('is-changing');
+                window.setTimeout(() => image.classList.remove('is-changing'), 180);
+            }
+            image.src = galleryImage.src;
+            image.alt = `Package photo ${galleryImage.index + 1}`;
+            thumb.dataset.galleryIndex = galleryImage.index;
+            thumb.setAttribute('aria-label', `View package photo ${galleryImage.index + 1}`);
+        });
+    }
+
+    galleryThumbSlots.forEach(thumb => {
+        thumb.addEventListener('click', () => openGallery(Number(thumb.dataset.galleryIndex || 0)));
+    });
+    renderRotatingGalleryThumbs();
+    if (gallerySideImages.length > 1) {
+        window.setInterval(() => {
+            galleryThumbOffset = (galleryThumbOffset + 1) % gallerySideImages.length;
+            renderRotatingGalleryThumbs();
+        }, 5000);
+    }
 
     let galleryIndex = 0;
 
@@ -1522,6 +1653,134 @@
         tax_percentage: {{ (float) ($package->tax_percentage ?? 0) }}
     };
     const planItemsData = @json($planPricingItems ?? []);
+    planItemsData.forEach(item => { item.removed = false; });
+
+    function refreshDayStopCount(dayNumber) {
+        const panel = document.getElementById(`day-panel-${dayNumber}`);
+        const badge = document.getElementById(`day-stop-count-${dayNumber}`);
+        if (!panel || !badge) return;
+        const count = panel.querySelectorAll('.mmt-timeline-stop:not([data-removed="true"])').length;
+        badge.textContent = `${count} Planned Stop${count === 1 ? '' : 's'}`;
+    }
+
+    function removeDayActivity(planItemId) {
+        const item = planItemsData.find(activity => activity.id === planItemId);
+        if (!item || item.removed || item.kind !== 'place') return;
+        item.removed = true;
+        document.getElementById(`plan-item-${planItemId}`)?.remove();
+        refreshDayStopCount(item.day);
+        recalculatePackagePricing();
+    }
+
+    function addDayActivity(dayNumber, cityId) {
+        const selector = document.getElementById(`add-activity-${dayNumber}`);
+        const placeId = Number(selector?.value || 0);
+        const place = swappablePlaces.find(option => option.id === placeId && (!cityId || option.city_id === cityId));
+        if (!selector || !place) {
+            selector?.focus();
+            return;
+        }
+        if (planItemsData.some(item => !item.removed && item.kind === 'place' && item.day === dayNumber && item.current_place_id === place.id)) {
+            selector.setCustomValidity('This activity is already in this day.');
+            selector.reportValidity();
+            selector.setCustomValidity('');
+            return;
+        }
+
+        const item = {
+            id: `added-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            day: dayNumber,
+            start_time: '',
+            position: planItemsData.filter(activity => activity.day === dayNumber).length + 1,
+            kind: 'place',
+            can_change: false,
+            current_place_id: place.id,
+            original_place_id: null,
+            place_price: Number(place.price || 0),
+            adult_india: Number(place.adult_india || 0),
+            adult_foreigner: Number(place.adult_foreigner || 0),
+            child_price: Number(place.child_price || 0),
+            student_india: Number(place.student_india || 0),
+            student_foreigner: Number(place.student_foreigner || 0),
+            state_id: Number(place.state_id || 0),
+            state_daily_price: Number(place.state_daily_price || 0),
+            original_place_price: 0,
+            additional_price: 0,
+            hotel_adult_price: 0,
+            place_name: place.name,
+            original_place_name: place.name,
+            city_id: place.city_id,
+            city_name: place.city_name,
+            original_description: place.description || '',
+            added: true,
+            removed: false,
+        };
+        planItemsData.push(item);
+
+        const stop = document.createElement('div');
+        stop.className = 'mmt-timeline-stop';
+        stop.id = `plan-item-${item.id}`;
+        stop.dataset.itemId = item.id;
+        stop.dataset.placeId = place.id;
+        const node = document.createElement('div');
+        node.className = 'mmt-timeline-node';
+        node.innerHTML = '<div class="w-2 h-2 rounded-full bg-blue-600"></div>';
+        stop.append(node);
+
+        const card = document.createElement('div');
+        card.className = 'panel border border-slate-200/90 p-4 transition-all hover:border-blue-300 md:p-5';
+        const topRow = document.createElement('div');
+        topRow.className = 'mb-3 flex flex-wrap items-center justify-between gap-2';
+        const type = document.createElement('span');
+        type.className = 'rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold uppercase text-emerald-700';
+        type.textContent = 'Added Activity';
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 transition hover:bg-rose-50';
+        removeButton.innerHTML = '<i class="fa-regular fa-trash-can mr-1"></i>Remove';
+        removeButton.addEventListener('click', () => removeDayActivity(item.id));
+        topRow.append(type, removeButton);
+
+        const title = document.createElement('h4');
+        title.className = 'plan-item-title text-base font-black leading-snug text-slate-900';
+        title.textContent = place.name;
+        const location = document.createElement('p');
+        location.className = 'plan-item-location mt-0.5 text-xs text-slate-500';
+        location.textContent = place.city_name;
+        const description = document.createElement('p');
+        description.className = 'plan-item-desc mt-2 text-xs leading-relaxed text-slate-600 md:text-sm';
+        description.textContent = place.description || 'Explore this destination and experience the local culture.';
+        card.append(topRow, title, location, description);
+        stop.append(card);
+
+        document.querySelector(`#day-panel-${dayNumber} .mmt-timeline`)?.append(stop);
+        selector.value = '';
+        refreshDayStopCount(dayNumber);
+        recalculatePackagePricing();
+    }
+
+    function proceedToBooking(url) {
+        const itinerary = {
+            items: planItemsData
+                .filter(item => item.kind === 'place' && !item.removed && item.current_place_id)
+                .map(item => ({
+                    plan_item_id: Number.isInteger(item.id) ? item.id : null,
+                    city_place_id: item.current_place_id,
+                    day_number: item.day,
+                    position: item.position || 0,
+                    adult_india: item.adult_india || 0,
+                    adult_foreigner: item.adult_foreigner || 0,
+                    child_price: item.child_price || 0,
+                    student_india: item.student_india || 0,
+                    student_foreigner: item.student_foreigner || 0,
+                    state_id: item.state_id || 0,
+                    state_daily_price: item.state_daily_price || 0,
+                    additional_price: item.additional_price || 0,
+                })),
+        };
+        sessionStorage.setItem(`package-itinerary-{{ $package->slug }}`, JSON.stringify(itinerary));
+        window.location.href = url;
+    }
 
     let activePlanItemId = null;
 
@@ -1683,6 +1942,13 @@
         item.place_name = newPlace.name;
         item.city_id = newPlace.city_id;
         item.city_name = newPlace.city_name;
+        item.adult_india = Number(newPlace.adult_india || 0);
+        item.adult_foreigner = Number(newPlace.adult_foreigner || 0);
+        item.child_price = Number(newPlace.child_price || 0);
+        item.student_india = Number(newPlace.student_india || 0);
+        item.student_foreigner = Number(newPlace.student_foreigner || 0);
+        item.state_id = Number(newPlace.state_id || 0);
+        item.state_daily_price = Number(newPlace.state_daily_price || 0);
 
         const isModified = item.current_place_id !== item.original_place_id;
 
@@ -1772,6 +2038,13 @@
         item.place_name = item.original_place_name;
         item.city_id = item.city_id;
         item.city_name = item.city_name;
+        item.adult_india = Number(item.original_adult_india || 0);
+        item.adult_foreigner = Number(item.original_adult_foreigner || 0);
+        item.child_price = Number(item.original_child_price || 0);
+        item.student_india = Number(item.original_student_india || 0);
+        item.student_foreigner = Number(item.original_student_foreigner || 0);
+        item.state_id = Number(item.original_state_id || 0);
+        item.state_daily_price = Number(item.original_state_daily_price || 0);
 
         const card = document.getElementById(`plan-item-${planItemId}`);
         if (card) {
@@ -1827,6 +2100,15 @@
         const customizedItems = [];
 
         planItemsData.forEach(item => {
+            if (item.removed) {
+                customizedItems.push({ item, diff: -(Number(item.place_price || 0) + Number(item.additional_price || 0)), change: 'removed' });
+                return;
+            }
+            if (item.added) {
+                subtotal += Number(item.place_price || 0);
+                customizedItems.push({ item, diff: Number(item.place_price || 0), change: 'added' });
+                return;
+            }
             if (item.kind === 'hotel') {
                 subtotal += Number(item.hotel_adult_price || 0) * Number(packageConfig.nights || 0);
             } else {
@@ -1836,7 +2118,8 @@
                 const diff = Number(item.place_price || 0) - Number(item.original_place_price || 0);
                 customizedItems.push({
                     item: item,
-                    diff: diff
+                    diff: diff,
+                    change: 'changed'
                 });
             }
         });
@@ -1897,9 +2180,14 @@
                 bookingNotice.classList.remove('hidden');
                 bookingList.innerHTML = customizedItems.map(c => {
                     const itemDiffFormatted = (c.diff >= 0 ? '+' : '−') + '₹' + Math.abs(Math.round(c.diff)).toLocaleString('en-IN');
+                    const activityLabel = c.change === 'removed'
+                        ? `<strong>${c.item.original_place_name}</strong> removed`
+                        : c.change === 'added'
+                            ? `<span class="text-indigo-700 font-bold">${c.item.place_name}</span> added`
+                            : `<strong>${c.item.original_place_name}</strong> &rarr; <span class="text-indigo-700 font-bold">${c.item.place_name}</span>`;
                     return `
                         <li class="flex items-center justify-between gap-2 border-b border-indigo-100/60 pb-1.5 last:border-0 last:pb-0">
-                            <span>Day ${c.item.day}: <strong>${c.item.original_place_name}</strong> &rarr; <span class="text-indigo-700 font-bold">${c.item.place_name}</span></span>
+                            <span>Day ${c.item.day}: ${activityLabel}</span>
                             <span class="font-extrabold text-[11px] ${c.diff < 0 ? 'text-emerald-700' : (c.diff > 0 ? 'text-amber-700' : 'text-slate-600')}">${itemDiffFormatted}</span>
                         </li>
                     `;

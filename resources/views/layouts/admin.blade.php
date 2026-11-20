@@ -19,12 +19,16 @@
 <div class="flex min-h-screen">
     <!-- Sidebar -->
     <aside class="w-64 bg-slate-900 text-slate-200 hidden md:flex flex-col fixed inset-y-0">
-        <div class="px-6 py-5 border-b border-slate-800 flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xl">
-                <i class="fa-solid fa-plane-departure"></i>
+        <div class="px-5 py-5 border-b border-slate-800 flex items-center gap-3">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white text-blue-600">
+                @if($companyProfile?->logo_path)
+                    <img src="{{ asset('storage/'.$companyProfile->logo_path) }}" alt="{{ $companyProfile->company_name }} logo" class="h-full w-full object-contain p-1">
+                @else
+                    <i class="fa-solid fa-plane-departure text-xl"></i>
+                @endif
             </div>
-            <div>
-                <p class="font-bold text-white leading-tight">Tour & Travel</p>
+            <div class="min-w-0">
+                <p class="truncate font-bold leading-tight text-white">{{ $companyProfile?->company_name ?? config('app.name', 'Tour & Travel') }}</p>
                 <p class="text-xs text-slate-400">Admin Panel</p>
             </div>
         </div>
@@ -60,6 +64,9 @@
                 <a href="{{ route('admin.packages.index') }}" class="sidebar-link {{ request()->routeIs('admin.packages.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
                     <i class="fa-solid fa-suitcase-rolling w-5 text-center"></i> Packages
                 </a>
+                <a href="{{ route('admin.custom-package-requests.index') }}" class="sidebar-link {{ request()->routeIs('admin.custom-package-requests.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-inbox w-5 text-center"></i> Custom Package Requests
+                </a>
             @endif
             @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'hotels.view'))
                 <a href="{{ route('admin.hotels.index') }}" class="sidebar-link {{ request()->routeIs('admin.hotels.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
@@ -94,6 +101,11 @@
                     <i class="fa-solid fa-envelope w-5 text-center"></i> Email Settings
                 </a>
             @endif
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'company-profile.view'))
+                <a href="{{ route('admin.company-profile.edit') }}" class="sidebar-link {{ request()->routeIs('admin.company-profile.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-building w-5 text-center"></i> Company Profile
+                </a>
+            @endif
             @if ($isAdminUser)
                 <a href="{{ route('admin.roles-permissions.index') }}" class="sidebar-link {{ request()->routeIs('admin.roles-permissions.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
                     <i class="fa-solid fa-user-shield w-5 text-center"></i> Roles & Permissions
@@ -123,7 +135,15 @@
     <div class="flex-1 md:ml-64 flex flex-col min-h-screen">
         <header class="bg-white shadow-sm sticky top-0 z-10">
             <div class="px-4 md:px-8 py-4 flex items-center justify-between">
-                <div>
+                <div class="min-w-0">
+                    <div class="mb-2 flex items-center gap-2 md:hidden">
+                        @if($companyProfile?->logo_path)
+                            <img src="{{ asset('storage/'.$companyProfile->logo_path) }}" alt="" class="h-8 w-8 rounded-lg object-contain">
+                        @else
+                            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white"><i class="fa-solid fa-plane-departure"></i></span>
+                        @endif
+                        <span class="truncate text-sm font-bold text-slate-800">{{ $companyProfile?->company_name ?? config('app.name', 'Tour & Travel') }}</span>
+                    </div>
                     <h1 class="text-xl md:text-2xl font-bold text-slate-900">@yield('header', 'Dashboard')</h1>
                     <p class="text-sm text-slate-500">@yield('subheader', 'Welcome back, manage your travel business.')</p>
                 </div>
@@ -159,6 +179,9 @@
                 @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'email-settings.view'))
                     <a href="{{ route('admin.email-settings.edit') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.email-settings.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Email Settings</a>
                 @endif
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'company-profile.view'))
+                    <a href="{{ route('admin.company-profile.edit') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.company-profile.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Company Profile</a>
+                @endif
                 @if ($isAdminUser)
                     <a href="{{ route('admin.roles-permissions.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.roles-permissions.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Roles &amp; Permissions</a>
                 @endif
@@ -173,8 +196,13 @@
         <main class="p-4 md:p-8 flex-1">
             @yield('content')
         </main>
-        <footer class="px-8 py-4 text-center text-xs text-slate-400">
-            &copy; {{ date('Y') }} {{ config('app.name', 'Tour & Travel') }} Admin Panel. All rights reserved.
+        <footer class="flex flex-col items-center justify-center gap-2 px-4 py-4 text-center text-xs text-slate-400 sm:flex-row sm:gap-3">
+            <span>&copy; {{ date('Y') }} Voyanta Services Admin Panel. All rights reserved.</span>
+            <span class="hidden text-slate-300 sm:inline" aria-hidden="true">|</span>
+            <a href="https://teneti.com" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-slate-500 transition hover:text-slate-700" aria-label="Teneti.com">
+                <span>Powered by</span>
+                <img src="{{ asset('assets/TENETi.COM-2024-Logo.webp') }}" alt="Teneti.com" class="h-6 w-auto object-contain" style="height: 35px">
+            </a>
         </footer>
     </div>
 </div>

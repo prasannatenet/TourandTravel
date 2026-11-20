@@ -6,7 +6,9 @@ use App\Http\Controllers\Admin\CabAssociateController;
 use App\Http\Controllers\Admin\CabController;
 use App\Http\Controllers\Admin\CityController;
 use App\Http\Controllers\Admin\CityPlaceController;
+use App\Http\Controllers\Admin\CompanyProfileController;
 use App\Http\Controllers\Admin\CountryController;
+use App\Http\Controllers\Admin\CustomPackageRequestController as AdminCustomPackageRequestController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmailSettingsController;
 use App\Http\Controllers\Admin\HotelController;
@@ -19,6 +21,7 @@ use App\Http\Controllers\CabAssociate\CabAssociateAuthController;
 use App\Http\Controllers\CabAssociate\CabAvailabilityController;
 use App\Http\Controllers\CabAssociate\CabController as CabAssociateCabController;
 use App\Http\Controllers\CabAssociate\CabDashboardController;
+use App\Http\Controllers\Frontend\CustomPackageController;
 use App\Http\Controllers\Frontend\PackageFrontendController;
 use App\Http\Controllers\Hotel\HotelAuthController;
 use App\Http\Controllers\Hotel\HotelBookingRequestController;
@@ -29,11 +32,18 @@ use App\Http\Controllers\Hotel\HotelRoomTypeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('packages.index');
+    return redirect()->route('admin.login');
 });
 
 Route::get('/packages', [PackageFrontendController::class, 'index'])->name('packages.index');
 Route::get('/packages/{slug}', [PackageFrontendController::class, 'show'])->name('packages.show');
+
+Route::get('/custom-packages', [CustomPackageController::class, 'index'])->name('custom-packages.index');
+Route::get('/custom-packages/create', [CustomPackageController::class, 'create'])->name('custom-packages.create');
+Route::post('/custom-packages', [CustomPackageController::class, 'store'])->middleware('throttle:10,1')->name('custom-packages.store');
+Route::get('/custom-packages/{customPackageRequest}/booking', [CustomPackageController::class, 'bookingForm'])->name('custom-packages.booking');
+Route::post('/custom-packages/{customPackageRequest}/booking', [CustomPackageController::class, 'submitBooking'])->middleware('throttle:5,1')->name('custom-packages.booking.submit');
+Route::get('/custom-packages/{customPackageRequest}', [CustomPackageController::class, 'show'])->name('custom-packages.show');
 
 Route::get('/packages/{package}/book', [PackageFrontendController::class, 'book'])->name('packages.book');
 Route::post('/packages/{package}/book', [PackageFrontendController::class, 'storeBook'])->name('packages.book.store');
@@ -81,6 +91,8 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('email-settings', [EmailSettingsController::class, 'edit'])->name('email-settings.edit');
         Route::put('email-settings', [EmailSettingsController::class, 'update'])->name('email-settings.update');
+        Route::get('company-profile', [CompanyProfileController::class, 'edit'])->name('company-profile.edit');
+        Route::put('company-profile', [CompanyProfileController::class, 'update'])->name('company-profile.update');
         Route::prefix('destinations')->name('destinations.')->group(function (): void {
             Route::get('/', function () {
                 return redirect()->route('admin.countries.index');
@@ -94,6 +106,9 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('countries/{country}/states', [CityPlaceController::class, 'statesByCountry'])->name('places.states-by-country');
         Route::get('states/{state}/cities', [CityPlaceController::class, 'citiesByState'])->name('places.cities-by-state');
         Route::resource('packages', TourPackageController::class);
+        Route::get('custom-package-requests', [AdminCustomPackageRequestController::class, 'index'])->name('custom-package-requests.index');
+        Route::get('custom-package-requests/{customPackageRequest}', [AdminCustomPackageRequestController::class, 'show'])->name('custom-package-requests.show');
+        Route::patch('custom-package-requests/{customPackageRequest}', [AdminCustomPackageRequestController::class, 'update'])->name('custom-package-requests.update');
         Route::get('hotels/{hotel}/rooms/{room}/customer-prices', [HotelRoomCustomerPriceController::class, 'redirectToHotelDetails'])
             ->name('hotels.rooms.customer-prices.show');
         Route::put('hotels/{hotel}/rooms/{room}/customer-prices', [HotelRoomCustomerPriceController::class, 'update'])

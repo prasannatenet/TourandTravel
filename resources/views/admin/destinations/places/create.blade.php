@@ -40,8 +40,8 @@
 <div><label class="block text-sm font-semibold mb-1">Place Description * (short, max 500)</label><textarea name="place_description" required maxlength="500" rows="2" placeholder="Famous beach for nightlife..." class="w-full border rounded-lg px-3 py-2 text-sm">{{ old('place_description') }}</textarea></div>
 <div><label class="block text-sm font-semibold mb-1">Description * (full details)</label><textarea name="description" required rows="4" placeholder="History, activities, entry fee..." class="w-full border rounded-lg px-3 py-2 text-sm">{{ old('description') }}</textarea></div>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-<div><label class="block text-sm font-semibold mb-1">Primary Img * (single)</label><input type="file" name="primary_image" accept="image/*" required class="w-full text-sm"></div>
-<div><label class="block text-sm font-semibold mb-1">Secondary Imgs (multi, max 8)</label><input type="file" name="secondary_images[]" accept="image/*" multiple class="w-full text-sm"></div>
+<div><label class="block text-sm font-semibold mb-1">Primary Img * (single, max 2 MB)</label><input type="file" name="primary_image" accept="image/*" required data-place-image-input class="w-full text-sm"></div>
+<div><label class="block text-sm font-semibold mb-1">Other images (up to 4, max 2 MB each)</label><input type="file" name="secondary_images[]" accept="image/*" multiple data-place-gallery-input class="w-full text-sm"><p class="text-xs text-slate-500 mt-1">Maximum 5 images total, including the primary image.</p></div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 <div><label class="block text-sm font-semibold mb-1">Visit Duration (hours) *</label><input type="number" name="visit_duration_hours" value="{{ old('visit_duration_hours', 2) }}" required min="0.5" max="72" step="0.5" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
@@ -59,4 +59,23 @@
 @endsection
 @push('scripts')
 @include('admin.destinations.places._cascade-script')
+<script>
+document.querySelector('form[action="{{ route('admin.places.store') }}"]')?.addEventListener('submit', (event) => {
+    const maxBytes = 2 * 1024 * 1024;
+    const primaryImage = document.querySelector('[data-place-image-input]')?.files?.[0];
+    const galleryImages = [...(document.querySelector('[data-place-gallery-input]')?.files ?? [])];
+    const oversizedImage = [primaryImage, ...galleryImages].find((image) => image && image.size > maxBytes);
+
+    if (oversizedImage) {
+        event.preventDefault();
+        alert('Each place image must be 2 MB or smaller.');
+        return;
+    }
+
+    if (galleryImages.length > 4) {
+        event.preventDefault();
+        alert('A place can have up to 5 images total, including the primary image.');
+    }
+});
+</script>
 @endpush

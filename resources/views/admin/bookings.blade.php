@@ -32,6 +32,33 @@
         </div>
     </div>
 
+    <section class="mb-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 sm:p-5">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <h3 class="font-bold text-slate-900">{{ $processing ? 'Custom package requests to process' : 'Custom package booking requests' }}</h3>
+                <p class="mt-1 text-xs text-slate-600">Requests submitted from the customer’s own itinerary builder.</p>
+            </div>
+            <a href="{{ route('admin.custom-package-requests.index') }}" class="text-xs font-semibold text-indigo-700 hover:underline">Open all custom requests</a>
+        </div>
+        <div class="space-y-2">
+            @forelse($customPackageRequests as $customRequest)
+                <a href="{{ route('admin.custom-package-requests.show', $customRequest) }}" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 hover:border-indigo-300">
+                    <div>
+                        <p class="text-sm font-bold text-slate-900">{{ $customRequest->booking_details['customer_name'] ?? 'Visitor' }} · {{ $customRequest->name }}</p>
+                        <p class="mt-1 text-xs text-slate-500">{{ $customRequest->booking_details['email'] ?? '' }} · {{ $customRequest->booking_details['mobile'] ?? '' }} · {{ $customRequest->days }} days</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize {{ $customRequest->status === 'pending' ? 'bg-amber-100 text-amber-800' : ($customRequest->status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800') }}">{{ $customRequest->status }}</span>
+                        <span class="text-xs font-semibold text-indigo-700">View request →</span>
+                    </div>
+                </a>
+            @empty
+                <p class="rounded-lg bg-white px-4 py-5 text-center text-sm text-slate-500">No custom package booking requests yet.</p>
+            @endforelse
+        </div>
+        <div class="mt-3">{{ $customPackageRequests->links() }}</div>
+    </section>
+
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead class="bg-slate-50 text-xs uppercase text-slate-500">
@@ -86,9 +113,9 @@
                             <form action="{{ route('admin.bookings.confirm', $booking) }}" method="POST" class="mb-1">
                                 @csrf
                                 @method('PATCH')
-                                <button type="submit" class="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
+                                <button type="submit" class="inline-flex items-center gap-1 rounded-lg  px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#3d67bf]" style="background: #4b77d4 !important">
                                     <i class="fa-solid fa-check" aria-hidden="true"></i>
-                                    Confirm Booking
+                                    Confirm Booking 
                                 </button>
                             </form>
                         @endif

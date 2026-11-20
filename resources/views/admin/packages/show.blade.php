@@ -14,7 +14,12 @@
     </div>
 
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        @if($package->image)
+        @if($package->video)
+            <video controls preload="metadata" class="h-56 w-full bg-slate-900 object-cover sm:h-72">
+                <source src="{{ asset('storage/'.$package->video) }}">
+                Your browser does not support video playback.
+            </video>
+        @elseif($package->image)
             <img src="{{ asset('storage/'.$package->image) }}" alt="{{ $package->name }}" class="h-56 w-full object-cover sm:h-72">
         @endif
         @if($package->galleryImages->isNotEmpty())
@@ -61,42 +66,42 @@
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-        <div class="mb-4 flex items-center justify-between gap-3">
-            <div><h3 class="text-base font-bold text-slate-900">Package inclusions</h3><p class="mt-1 text-sm text-slate-500">Package-specific meals, vehicles, and services.</p></div>
-            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{{ $package->inclusionItems->sum('quantity') }} included</span>
-        </div>
-        @if($package->inclusionItems->isEmpty())
-            <p class="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">No inclusions selected.</p>
-        @else
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                @foreach($package->inclusionItems as $item)
-                    @php $inclusionDetail = $inclusionDetails[$item->id] ?? null; @endphp
-                    <article class="rounded-xl border border-slate-200 p-4">
-                        <div class="flex items-start gap-3">
-                            @if($inclusionDetail && ($inclusionDetail['image_one'] || $inclusionDetail['image_two']))
-                                <div class="flex shrink-0 gap-1.5">
-                                    @foreach([$inclusionDetail['image_one'], $inclusionDetail['image_two']] as $imagePath)
-                                        @if($imagePath)<img src="{{ asset('storage/'.$imagePath) }}" alt="{{ $inclusionDetail['name'] ?? $item->inclusion->name }}" class="h-14 w-20 rounded-lg object-cover">@endif
-                                    @endforeach
-                                </div>
-                            @endif
-                            <div class="min-w-0">
-                                <h4 class="font-semibold text-slate-800">{{ $inclusionDetail['name'] ?? $item->inclusion->name }}</h4>
-                                <p class="mt-1 text-xs text-slate-500">Quantity: {{ $item->quantity }}</p>
-                                @if($inclusionDetail && !empty($inclusionDetail['duration_hours']))
-                                    <p class="mt-1 text-xs text-indigo-600"><i class="fa-regular fa-hourglass-half mr-1"></i>{{ $inclusionDetail['duration_hours'] }} {{ (float) $inclusionDetail['duration_hours'] === 1.0 ? 'hour' : 'hours' }}</p>
-                                @endif
-                            </div>
-                        </div>
-                        @if($inclusionDetail && ($inclusionDetail['place_from'] || $inclusionDetail['place_to']))
-                            <p class="mt-3 text-xs text-slate-500">{{ $inclusionDetail['place_from'] ?: 'Any location' }} â†’ {{ $inclusionDetail['place_to'] ?: '' }}</p>
-                        @endif
-                        @if($inclusionDetail && !empty($inclusionDetail['description']))
-                            <p class="mt-2 whitespace-pre-line text-sm leading-5 text-slate-600">{{ $inclusionDetail['description'] }}</p>
-                        @endif
-                    </article>
-                @endforeach
-            </div>
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <div><h3 class="text-base font-bold text-slate-900">Package inclusions</h3><p class="mt-1 text-sm text-slate-500">Package-specific meals, vehicles, and services.</p></div>
+            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{{ $package->inclusionItems->sum('quantity') }} included</span>
+        </div>
+        @if($package->inclusionItems->isEmpty())
+            <p class="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">No inclusions selected.</p>
+        @else
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                @foreach($package->inclusionItems as $item)
+                    @php $inclusionDetail = $inclusionDetails[$item->id] ?? null; @endphp
+                    <article class="rounded-xl border border-slate-200 p-4">
+                        <div class="flex items-start gap-3">
+                            @if($inclusionDetail && ($inclusionDetail['image_one'] || $inclusionDetail['image_two']))
+                                <div class="flex shrink-0 gap-1.5">
+                                    @foreach([$inclusionDetail['image_one'], $inclusionDetail['image_two']] as $imagePath)
+                                        @if($imagePath)<img src="{{ asset('storage/'.$imagePath) }}" alt="{{ $inclusionDetail['name'] ?? $item->inclusion->name }}" class="h-14 w-20 rounded-lg object-cover">@endif
+                                    @endforeach
+                                </div>
+                            @endif
+                            <div class="min-w-0">
+                                <h4 class="font-semibold text-slate-800">{{ $inclusionDetail['name'] ?? $item->inclusion->name }}</h4>
+                                <p class="mt-1 text-xs text-slate-500">Quantity: {{ $item->quantity }}</p>
+                                @if($inclusionDetail && !empty($inclusionDetail['duration_hours']))
+                                    <p class="mt-1 text-xs text-indigo-600"><i class="fa-regular fa-hourglass-half mr-1"></i>{{ $inclusionDetail['duration_hours'] }} {{ (float) $inclusionDetail['duration_hours'] === 1.0 ? 'hour' : 'hours' }}</p>
+                                @endif
+                            </div>
+                        </div>
+                        @if($inclusionDetail && ($inclusionDetail['place_from'] || $inclusionDetail['place_to']))
+                            <p class="mt-3 text-xs text-slate-500">{{ $inclusionDetail['place_from'] ?: 'Any location' }} â†’ {{ $inclusionDetail['place_to'] ?: '' }}</p>
+                        @endif
+                        @if($inclusionDetail && !empty($inclusionDetail['description']))
+                            <p class="mt-2 whitespace-pre-line text-sm leading-5 text-slate-600">{{ $inclusionDetail['description'] }}</p>
+                        @endif
+                    </article>
+                @endforeach
+            </div>
         @endif
 
     <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">

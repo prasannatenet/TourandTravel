@@ -51,12 +51,12 @@
                         Remember me
                     </label>
                 </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition" style="background: #4b77d4">
                     <i class="fa-solid fa-right-to-bracket mr-2"></i> Login to Dashboard
                 </button>
-                <p class="text-center text-xs text-slate-400 pt-2">
+                {{-- <p class="text-center text-xs text-slate-400 pt-2">
                     Default: <code class="bg-slate-100 px-1.5 py-0.5 rounded">admin@tourtravel.com / Admin@123456</code>
-                </p>
+                </p> --}}
             </form>
         </div>
         <p class="text-center text-slate-400 text-xs mt-4">&copy; {{ date('Y') }} Tour & Travel. Secure admin area.</p>

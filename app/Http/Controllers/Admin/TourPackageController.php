@@ -76,13 +76,16 @@ class TourPackageController extends Controller
         $validated = $this->validatedPackageData($request);
 
         $image = null;
+        $video = null;
         if ($request->hasFile('image')) {
             $image = $request->file('image')->store('packages/primary', 'public');
+        } elseif ($request->hasFile('video')) {
+            $video = $request->file('video')->store('packages/videos', 'public');
         }
 
         $package = TourPackage::create(array_merge(
             Arr::only($validated, ['name', 'category', 'tour_type', 'description', 'departure_city', 'base_price', 'child_price', 'infant_price', 'discount_percentage', 'tax_percentage', 'days', 'nights']),
-            ['image' => $image, 'is_active' => $request->has('is_active')]
+            ['image' => $image, 'video' => $video, 'is_active' => $request->has('is_active')]
         ));
 
         $this->syncGalleryImages($package, $request->file('gallery_images', []), []);
@@ -145,16 +148,30 @@ class TourPackageController extends Controller
         $validated = $this->validatedPackageData($request, $package);
 
         $image = $package->image;
+        $video = $package->video;
         if ($request->hasFile('image')) {
+            $image = $request->file('image')->store('packages/primary', 'public');
             if ($package->image) {
                 Storage::disk('public')->delete($package->image);
             }
-            $image = $request->file('image')->store('packages/primary', 'public');
+            if ($package->video) {
+                Storage::disk('public')->delete($package->video);
+            }
+            $video = null;
+        } elseif ($request->hasFile('video')) {
+            $video = $request->file('video')->store('packages/videos', 'public');
+            if ($package->image) {
+                Storage::disk('public')->delete($package->image);
+            }
+            if ($package->video) {
+                Storage::disk('public')->delete($package->video);
+            }
+            $image = null;
         }
 
         $package->update(array_merge(
             Arr::only($validated, ['name', 'category', 'tour_type', 'description', 'departure_city', 'base_price', 'child_price', 'infant_price', 'discount_percentage', 'tax_percentage', 'days', 'nights']),
-            ['image' => $image, 'is_active' => $request->has('is_active')]
+            ['image' => $image, 'video' => $video, 'is_active' => $request->has('is_active')]
         ));
 
         $this->syncGalleryImages($package, $request->file('gallery_images', []), $validated['remove_gallery_images'] ?? []);
@@ -171,6 +188,9 @@ class TourPackageController extends Controller
     {
         if ($package->image) {
             Storage::disk('public')->delete($package->image);
+        }
+        if ($package->video) {
+            Storage::disk('public')->delete($package->video);
         }
         foreach ($package->galleryImages as $galleryImage) {
             Storage::disk('public')->delete($galleryImage->image);
@@ -278,11 +298,19 @@ class TourPackageController extends Controller
             'plan_items.*.additional_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'plan_items.*.show_charge_button' => ['nullable', 'boolean'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'video' => ['nullable', 'file', 'mimes:mp4,mov,webm', 'max:5120'],
             'is_active' => ['sometimes', 'boolean'],
         ];
 
         $validator = Validator::make($request->all(), $rules);
         $validator->after(function (\Illuminate\Validation\Validator $validator) use ($package, $request): void {
+            if ($request->hasFile('image') && $request->hasFile('video')) {
+                $validator->errors()->add('image', 'Choose either a cover photo or a cover video, not both.');
+                $validator->errors()->add('video', 'Choose either a cover photo or a cover video, not both.');
+
+                return;
+            }
+
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }
