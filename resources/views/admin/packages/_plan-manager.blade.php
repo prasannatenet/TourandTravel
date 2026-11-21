@@ -456,7 +456,7 @@
                 var groupHasAllowed = false;
                 group.querySelectorAll('option').forEach(function (opt) {
                     if (!opt.value) return;
-                    var isAllowed = allowedCities.size === 0 || allowedCities.has(opt.dataset.cityId || '');
+                    var isAllowed = allowedCities.has(opt.dataset.cityId || '');
                     opt.hidden = !isAllowed;
                     opt.disabled = !isAllowed;
                     if (isAllowed) {

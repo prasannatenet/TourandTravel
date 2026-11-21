@@ -229,11 +229,12 @@
                 </section>
 
                 <aside class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:sticky lg:top-24">
-                    @if ($package->video)
-                        <video autoplay muted loop playsinline controls preload="metadata"
-                            class="h-52 w-full bg-slate-900 object-cover">
-                            <source src="{{ asset('storage/' . $package->video) }}">
-                        </video>
+                    @if ($package->youtubeEmbedUrl())
+                        <a href="{{ $package->youtubeWatchUrl() }}" target="_blank" rel="noopener noreferrer" class="group relative flex h-52 w-full items-center justify-center overflow-hidden bg-slate-950" aria-label="Watch {{ $package->name }} video on YouTube">
+                            <img src="{{ $package->youtubeThumbnailUrl() }}" alt="{{ $package->name }} video thumbnail" class="absolute inset-0 h-full w-full object-cover opacity-75 transition group-hover:scale-105">
+                            <span class="absolute inset-0 bg-slate-950/30"></span>
+                            <span class="relative rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-xl group-hover:bg-red-700"><i class="fa-brands fa-youtube mr-2"></i>Watch on YouTube</span>
+                        </a>
                     @elseif ($package->image)
                         <img src="{{ asset('storage/' . $package->image) }}" alt="{{ $package->name }}"
                             class="h-52 w-full object-cover">

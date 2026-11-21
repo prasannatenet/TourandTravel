@@ -116,6 +116,55 @@ class TourPackage extends Model
         return $this->hasMany(TourPackageImage::class, 'tour_package_id')->orderBy('position');
     }
 
+    public function youtubeVideoId(): ?string
+    {
+        if (! is_string($this->video) || trim($this->video) === '') {
+            return null;
+        }
+
+        $host = strtolower((string) parse_url($this->video, PHP_URL_HOST));
+        $path = trim((string) parse_url($this->video, PHP_URL_PATH), '/');
+        $query = [];
+        parse_str((string) parse_url($this->video, PHP_URL_QUERY), $query);
+
+        if (in_array($host, ['youtu.be', 'www.youtu.be'], true)) {
+            $videoId = explode('/', $path)[0] ?? '';
+        } elseif (in_array($host, ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com'], true)) {
+            if (str_starts_with($path, 'watch')) {
+                $videoId = $query['v'] ?? '';
+            } elseif (preg_match('/^(?:embed|shorts|live|v)\/([^\/]+)/', $path, $matches) === 1) {
+                $videoId = $matches[1];
+            } else {
+                $videoId = '';
+            }
+        } else {
+            return null;
+        }
+
+        return is_string($videoId) && preg_match('/^[A-Za-z0-9_-]{11}$/', $videoId) === 1 ? $videoId : null;
+    }
+
+    public function youtubeEmbedUrl(): ?string
+    {
+        $videoId = $this->youtubeVideoId();
+
+        return $videoId ? 'https://www.youtube-nocookie.com/embed/'.$videoId : null;
+    }
+
+    public function youtubeWatchUrl(): ?string
+    {
+        $videoId = $this->youtubeVideoId();
+
+        return $videoId ? 'https://www.youtube.com/watch?v='.$videoId : null;
+    }
+
+    public function youtubeThumbnailUrl(): ?string
+    {
+        $videoId = $this->youtubeVideoId();
+
+        return $videoId ? 'https://i.ytimg.com/vi/'.$videoId.'/hqdefault.jpg' : null;
+    }
+
     public function availabilities(): HasMany
     {
         return $this->hasMany(TourPackageAvailability::class, 'tour_package_id')->orderBy('departure_date');

@@ -80,8 +80,10 @@ class TourPackageController extends Controller
         if ($request->hasFile('image')) {
             $image = $request->file('image')->store('packages/primary', 'public');
         } elseif ($request->hasFile('video')) {
-            $video = $request->file('video')->store('packages/videos', 'public');
+            // Disabled: video file uploads replaced by YouTube links stored in the 'video' column.
+            // $video = $request->file('video')->store('packages/videos', 'public');
         }
+        $video = $validated['video'] ?? null;
 
         $package = TourPackage::create(array_merge(
             Arr::only($validated, ['name', 'category', 'tour_type', 'description', 'departure_city', 'base_price', 'child_price', 'infant_price', 'discount_percentage', 'tax_percentage', 'days', 'nights']),
@@ -154,20 +156,19 @@ class TourPackageController extends Controller
             if ($package->image) {
                 Storage::disk('public')->delete($package->image);
             }
-            if ($package->video) {
-                Storage::disk('public')->delete($package->video);
-            }
             $video = null;
         } elseif ($request->hasFile('video')) {
-            $video = $request->file('video')->store('packages/videos', 'public');
-            if ($package->image) {
-                Storage::disk('public')->delete($package->image);
-            }
-            if ($package->video) {
-                Storage::disk('public')->delete($package->video);
-            }
-            $image = null;
+            // Disabled: video file uploads replaced by YouTube links stored in the 'video' column.
+            // $video = $request->file('video')->store('packages/videos', 'public');
+            // if ($package->image) {
+            //     Storage::disk('public')->delete($package->image);
+            // }
+            // if ($package->video) {
+            //     Storage::disk('public')->delete($package->video);
+            // }
+            // $image = null;
         }
+        $video = $validated['video'] ?? $video;
 
         $package->update(array_merge(
             Arr::only($validated, ['name', 'category', 'tour_type', 'description', 'departure_city', 'base_price', 'child_price', 'infant_price', 'discount_percentage', 'tax_percentage', 'days', 'nights']),
@@ -298,7 +299,7 @@ class TourPackageController extends Controller
             'plan_items.*.additional_price' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'plan_items.*.show_charge_button' => ['nullable', 'boolean'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
-            'video' => ['nullable', 'file', 'mimes:mp4,mov,webm', 'max:5120'],
+            'video' => ['nullable', 'url', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
         ];
 

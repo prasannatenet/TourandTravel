@@ -90,10 +90,11 @@
             <article class="group rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition">
                 <!-- Package Image -->
                 <div class="relative h-48 overflow-hidden">
-                    @if($package->video)
-                        <video class="h-full w-full object-cover group-hover:scale-105 transition duration-300" autoplay muted loop playsinline preload="metadata" aria-label="{{ $package->name }} package video">
-                            <source src="{{ asset('storage/'.$package->video) }}">
-                        </video>
+                    @if($package->youtubeEmbedUrl())
+                        <a href="{{ $package->youtubeWatchUrl() }}" target="_blank" rel="noopener noreferrer" class="relative block h-full w-full bg-slate-950" aria-label="Watch {{ $package->name }} video on YouTube">
+                            <img src="{{ $package->youtubeThumbnailUrl() }}" alt="{{ $package->name }} video thumbnail" class="h-full w-full object-cover opacity-80 transition group-hover:scale-105">
+                            <span class="absolute inset-0 flex items-center justify-center"><span class="rounded-full bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-lg"><i class="fa-brands fa-youtube mr-1"></i>Watch video</span></span>
+                        </a>
                     @elseif($package->galleryImages->first())
                         <img src="{{ asset('storage/'.$package->galleryImages->first()->image) }}" alt="{{ $package->name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                     @elseif($package->image)

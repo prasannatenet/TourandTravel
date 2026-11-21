@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -106,6 +106,11 @@
                     <i class="fa-solid fa-building w-5 text-center"></i> Company Profile
                 </a>
             @endif
+            @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'newsletter-subscribers.view'))
+                <a href="{{ route('admin.newsletter-subscribers.index') }}" class="sidebar-link {{ request()->routeIs('admin.newsletter-subscribers.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
+                    <i class="fa-solid fa-envelope-open-text w-5 text-center"></i> Newsletter Subscribers
+                </a>
+            @endif
             @if ($isAdminUser)
                 <a href="{{ route('admin.roles-permissions.index') }}" class="sidebar-link {{ request()->routeIs('admin.roles-permissions.*') ? 'active' : '' }} flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
                     <i class="fa-solid fa-user-shield w-5 text-center"></i> Roles & Permissions
@@ -182,8 +187,11 @@
                 @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'company-profile.view'))
                     <a href="{{ route('admin.company-profile.edit') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.company-profile.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Company Profile</a>
                 @endif
+                @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'newsletter-subscribers.view'))
+                    <a href="{{ route('admin.newsletter-subscribers.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.newsletter-subscribers.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap\">Newsletter Subscribers</a>
+                @endif
                 @if ($isAdminUser)
-                    <a href="{{ route('admin.roles-permissions.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.roles-permissions.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap">Roles &amp; Permissions</a>
+                    <a href="{{ route('admin.roles-permissions.index') }}" class="px-3 py-1.5 {{ request()->routeIs('admin.roles-permissions.*') ? 'bg-blue-600 text-white' : 'bg-slate-100' }} rounded-lg whitespace-nowrap\">Roles &amp; Permissions</a>
                 @endif
                 @if ($isAdminUser || auth()->user()->getAllPermissions()->contains('name', 'destinations.view'))
                     <a href="{{ route('admin.countries.index') }}" class="px-3 py-1.5 bg-slate-100 rounded-lg whitespace-nowrap">Country</a>

@@ -27,7 +27,7 @@
             <div class="border border-slate-200 rounded-xl p-4 sm:p-5 hover:shadow-md transition">
                 <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div class="flex gap-3">
-                        @if($package->video)<video muted preload="metadata" class="h-16 w-24 shrink-0 rounded-lg bg-slate-900 object-cover"><source src="{{ asset('storage/'.$package->video) }}"></video>@elseif($package->image)<img src="{{ asset('storage/'.$package->image) }}" alt="" class="h-16 w-24 shrink-0 rounded-lg object-cover">@endif
+                        @if($package->youtubeThumbnailUrl())<a href="{{ $package->youtubeWatchUrl() }}" target="_blank" rel="noopener noreferrer" aria-label="Watch {{ $package->name }} video on YouTube" class="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-900"><img src="{{ $package->youtubeThumbnailUrl() }}" alt="{{ $package->name }} video thumbnail" class="h-full w-full object-cover"><span class="absolute inset-0 flex items-center justify-center bg-black/20 text-white"><i class="fa-brands fa-youtube"></i></span></a>@elseif($package->image)<img src="{{ asset('storage/'.$package->image) }}" alt="" class="h-16 w-24 shrink-0 rounded-lg object-cover">@endif
                         <div>
                         <h3 class="text-base font-bold text-slate-800">{{ $package->name }}</h3>
                         <p class="text-xs text-slate-500 mt-0.5">

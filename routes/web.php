@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmailSettingsController;
 use App\Http\Controllers\Admin\HotelController;
 use App\Http\Controllers\Admin\HotelRoomCustomerPriceController;
+use App\Http\Controllers\Admin\NewsletterSubscriberController;
 use App\Http\Controllers\Admin\PackageInclusionController;
 use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Admin\StateController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\CabAssociate\CabAvailabilityController;
 use App\Http\Controllers\CabAssociate\CabController as CabAssociateCabController;
 use App\Http\Controllers\CabAssociate\CabDashboardController;
 use App\Http\Controllers\Frontend\CustomPackageController;
+use App\Http\Controllers\Frontend\NewsletterController;
 use App\Http\Controllers\Frontend\PackageFrontendController;
 use App\Http\Controllers\Hotel\HotelAuthController;
 use App\Http\Controllers\Hotel\HotelBookingRequestController;
@@ -47,6 +49,7 @@ Route::get('/custom-packages/{customPackageRequest}', [CustomPackageController::
 
 Route::get('/packages/{package}/book', [PackageFrontendController::class, 'book'])->name('packages.book');
 Route::post('/packages/{package}/book', [PackageFrontendController::class, 'storeBook'])->name('packages.book.store');
+Route::post('/newsletter/subscribe', [NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
 
 Route::prefix('cab-associate')->name('cab-associate.')->group(function (): void {
     Route::get('login', [CabAssociateAuthController::class, 'showLogin'])->name('login');
@@ -93,6 +96,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::put('email-settings', [EmailSettingsController::class, 'update'])->name('email-settings.update');
         Route::get('company-profile', [CompanyProfileController::class, 'edit'])->name('company-profile.edit');
         Route::put('company-profile', [CompanyProfileController::class, 'update'])->name('company-profile.update');
+        Route::get('newsletter-subscribers', [NewsletterSubscriberController::class, 'index'])->name('newsletter-subscribers.index');
         Route::prefix('destinations')->name('destinations.')->group(function (): void {
             Route::get('/', function () {
                 return redirect()->route('admin.countries.index');

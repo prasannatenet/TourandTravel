@@ -84,4 +84,10 @@ return [
             'update' => 'Update',
         ],
     ],
+    'newsletter-subscribers' => [
+        'label' => 'Newsletter Subscribers',
+        'permissions' => [
+            'view' => 'View',
+        ],
+    ],
 ];

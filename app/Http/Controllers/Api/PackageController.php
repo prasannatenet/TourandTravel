@@ -99,7 +99,7 @@ class PackageController extends Controller
             ],
             'duration' => ['days' => $package->days, 'nights' => $package->nights],
             'image' => $package->image ? asset('storage/'.$package->image) : null,
-            'video' => $package->video ? asset('storage/'.$package->video) : null,
+            'video' => $package->video ? (preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|.*[?&]v=)|youtu\.be\/)/', $package->video) ? $package->video : asset('storage/'.$package->video)) : null,
             'gallery' => $package->galleryImages->map(fn ($image): string => asset('storage/'.$image->image))->values(),
             'views' => $package->views,
             'availability' => $package->availabilities->map(fn ($availability): array => [

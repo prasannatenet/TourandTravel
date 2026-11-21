@@ -178,12 +178,92 @@
                 <h2>Subscribe <span>Now!</span></h2>
                 <p>Sign up to our weekly newsletter to get the latest updates.</p>
             </div>
-            <div class="newsletter-form" role="group" aria-label="Newsletter signup">
-                <input type="email" placeholder="Email address..." aria-label="Email address">
-                <button type="button" aria-label="Subscribe"><span class="material-symbols-outlined" aria-hidden="true">search</span></button>
-            </div>
+            <form class="newsletter-form" role="group" aria-label="Newsletter signup" action="{{ route('newsletter.subscribe') }}" method="POST">
+                @csrf
+                <input type="email" name="email" placeholder="Email address..." aria-label="Email address" required>
+                <button type="submit" aria-label="Subscribe"><span class="material-symbols-outlined" aria-hidden="true">mail</span></button>
+            </form>
         </div>
     </section>
+
+    <!-- Newsletter success popup -->
+    <div id="newsletterPopup" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div id="newsletterPopupOverlay" class="absolute inset-0 bg-black bg-opacity-50 transition-opacity" aria-hidden="true"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-6 rounded-2xl bg-white shadow-2xl border border-slate-200 text-center transform scale-95 opacity-0 transition-all duration-300" id="newsletterPopupBox" role="dialog" aria-modal="true" aria-labelledby="newsletterPopupTitle">
+            <h3 id="newsletterPopupTitle" class="text-lg font-bold text-slate-800 mb-2">Subscribed Successfully!</h3>
+            <p class="text-sm text-slate-600 mb-6">You have been added to our newsletter mailing list.</p>
+            <button type="button" id="newsletterPopupClose" class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200">Close</button>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const form = document.querySelector('.newsletter-form');
+            const popup = document.getElementById('newsletterPopup');
+            const popupBox = document.getElementById('newsletterPopupBox');
+            const overlay = document.getElementById('newsletterPopupOverlay');
+            const closeBtn = document.getElementById('newsletterPopupClose');
+
+            if (!form || !popup || !popupBox) return;
+
+            const showPopup = () => {
+                popup.classList.remove('hidden');
+                popup.setAttribute('aria-hidden', 'false');
+                requestAnimationFrame(() => {
+                    popupBox.classList.remove('opacity-0', 'scale-95');
+                    popupBox.classList.add('opacity-100', 'scale-100');
+                });
+            };
+
+            const hidePopup = () => {
+                popupBox.classList.remove('opacity-100', 'scale-100');
+                popupBox.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    popup.classList.add('hidden');
+                    popup.setAttribute('aria-hidden', 'true');
+                }, 300);
+            };
+
+            closeBtn?.addEventListener('click', hidePopup);
+            overlay?.addEventListener('click', hidePopup);
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalBtnHtml = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">refresh</span>';
+
+                const formData = new FormData(form);
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            Accept: 'application/json',
+                        },
+                        body: formData,
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        form.reset();
+                        showPopup();
+                    } else {
+                        alert(data.message || 'Something went wrong. Please try again.');
+                    }
+                } catch (error) {
+                    alert('Network error. Please try again.');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnHtml;
+                }
+            });
+        })();
+    </script>
 
     <footer class="site-footer">
         <div class="footer-overlay"></div>

@@ -220,7 +220,7 @@
                         <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-xs font-bold text-amber-700">06</span>
                         <div>
                             <h3 class="text-lg font-bold text-slate-900">Package cover media</h3>
-                            <p class="text-xs text-slate-500">Keep the current cover, or replace it with one photo or one video.</p>
+                            <p class="text-xs text-slate-500">Keep the current cover, or replace it with one photo or a YouTube video link.</p>
                         </div>
                     </div>
 
@@ -229,10 +229,11 @@
                             <div class="rounded-[18px] border border-slate-200 bg-slate-50 p-3">
                                 <p class="mb-2 text-sm font-semibold text-slate-700">Current cover {{ $package->video ? 'video' : 'photo' }}</p>
                                 @if($package->video)
-                                    <video controls preload="metadata" class="h-40 w-full rounded-xl bg-slate-900 object-contain shadow-sm">
-                                        <source src="{{ asset('storage/'.$package->video) }}">
-                                        Your browser does not support video playback.
-                                    </video>
+                                    <div class="h-40 w-full rounded-xl bg-slate-900 shadow-sm flex items-center justify-center">
+                                        <a href="{{ $package->youtubeWatchUrl() ?? $package->video }}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-indigo-400 hover:underline">
+                                            <i class="fa-brands fa-youtube"></i> Open cover video on YouTube
+                                        </a>
+                                    </div>
                                 @else
                                     <img src="{{ asset('storage/'.$package->image) }}" alt="{{ $package->name }} cover" class="h-28 w-full rounded-xl object-cover shadow-sm">
                                 @endif
@@ -246,11 +247,17 @@
                                 <span class="mt-1 block text-xs text-slate-400">JPG, PNG, WebP · up to 4 MB</span>
                                 <input id="package-cover-image" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="mt-4 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white">
                             </label>
-                            <label class="rounded-[18px] border border-dashed border-slate-300 bg-slate-50/70 p-4 text-center">
+                            {{-- <label class="rounded-[18px] border border-dashed border-slate-300 bg-slate-50/70 p-4 text-center">
                                 <span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-indigo-600 shadow-sm"><i class="fa-solid fa-video"></i></span>
                                 <span class="mt-3 block text-sm font-semibold text-slate-700">Replace with a video</span>
                                 <span class="mt-1 block text-xs text-slate-400">MP4, MOV, WebM · up to 5 MB</span>
                                 <input id="package-cover-video" type="file" name="video" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm" class="mt-4 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white">
+                            </label> --}}
+                            <label class="rounded-[18px] border border-dashed border-slate-300 bg-slate-50/70 p-4 text-center">
+                                <span class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-indigo-600 shadow-sm"><i class="fa-brands fa-youtube"></i></span>
+                                <span class="mt-3 block text-sm font-semibold text-slate-700">Replace with a video link</span>
+                                <span class="mt-1 block text-xs text-slate-400">YouTube URL</span>
+                                <input id="package-cover-video-link" type="url" name="video" value="{{ old('video', $package->video) }}" placeholder="https://youtu.be/..." class="mt-4 block w-full text-xs text-slate-500">
                             </label>
                         </div>
                         <p class="text-[11px] text-slate-500">Choose only one replacement. The current cover media will be retained if both fields are left blank.</p>
@@ -300,12 +307,12 @@
     <script>
         (() => {
             const imageInput = document.getElementById('package-cover-image');
-            const videoInput = document.getElementById('package-cover-video');
+            const videoInput = document.getElementById('package-cover-video-link');
             imageInput?.addEventListener('change', () => {
                 if (imageInput.files.length) videoInput.value = '';
             });
-            videoInput?.addEventListener('change', () => {
-                if (videoInput.files.length) imageInput.value = '';
+            videoInput?.addEventListener('input', () => {
+                if (videoInput.value.trim()) imageInput.value = '';
             });
         })();
     </script>

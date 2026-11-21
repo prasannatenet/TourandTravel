@@ -14,11 +14,43 @@
     </div>
 
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        @if($package->video)
-            <video controls preload="metadata" class="h-56 w-full bg-slate-900 object-cover sm:h-72">
-                <source src="{{ asset('storage/'.$package->video) }}">
-                Your browser does not support video playback.
-            </video>
+        @if($package->youtubeEmbedUrl())
+            <div class="relative aspect-video w-full bg-slate-950">
+                <iframe id="admin-package-youtube-player" src="{{ $package->youtubeEmbedUrl() }}?autoplay=1&mute=1&playsinline=1&controls=1&rel=0&enablejsapi=1" title="{{ $package->name }} video" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen class="absolute inset-0 h-full w-full"></iframe>
+                <a id="admin-package-video-fallback" href="{{ $package->youtubeWatchUrl() }}" target="_blank" rel="noopener noreferrer" class="absolute inset-0 hidden items-center justify-center bg-slate-950 text-white">
+                    <img src="{{ $package->youtubeThumbnailUrl() }}" alt="{{ $package->name }} video thumbnail" class="absolute inset-0 h-full w-full object-cover opacity-75">
+                    <span class="absolute inset-0 bg-slate-950/30"></span>
+                    <span class="relative rounded-full bg-red-600 px-5 py-3 text-sm font-bold shadow-xl"><i class="fa-brands fa-youtube mr-2"></i>Watch on YouTube</span>
+                </a>
+            </div>
+        @push('scripts')
+                <script>
+                    (() => {
+                        const setupYoutubePlayer = () => {
+                            const iframe = document.getElementById('admin-package-youtube-player');
+                            const fallback = document.getElementById('admin-package-video-fallback');
+                            if (!iframe || !fallback || !window.YT?.Player) return;
+                            new YT.Player(iframe, { events: { onError: () => {
+                                iframe.classList.add('hidden');
+                                fallback.classList.remove('hidden');
+                                fallback.classList.add('flex');
+                            } } });
+                        };
+                        if (window.YT?.Player) {
+                            setupYoutubePlayer();
+                            return;
+                        }
+                        const previousCallback = window.onYouTubeIframeAPIReady;
+                        window.onYouTubeIframeAPIReady = () => {
+                            previousCallback?.();
+                            setupYoutubePlayer();
+                        };
+                        const youtubeApiScript = document.createElement('script');
+                        youtubeApiScript.src = 'https://www.youtube.com/iframe_api';
+                        document.head.appendChild(youtubeApiScript);
+                    })();
+                </script>
+        @endpush
         @elseif($package->image)
             <img src="{{ asset('storage/'.$package->image) }}" alt="{{ $package->name }}" class="h-56 w-full object-cover sm:h-72">
         @endif

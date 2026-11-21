@@ -761,11 +761,15 @@
         {{-- MakeMyTrip 3-Photo Hero Grid --}}
         <div class="mmt-gallery mb-6">
             <div class="mmt-gallery-main" @if($galleryImages->isNotEmpty()) onclick="openGallery(0)" @endif>
-                @if($package->video)
-                    <video class="h-full w-full object-cover" autoplay muted loop playsinline controls preload="metadata" aria-label="{{ $package->name }} package video" onclick="event.stopPropagation()">
-                        <source src="{{ asset('storage/'.$package->video) }}">
-                        Your browser does not support video playback.
-                    </video>
+                @if($package->youtubeEmbedUrl())
+                    <div class="relative aspect-video h-full w-full overflow-hidden rounded-xl bg-slate-950">
+                        <iframe id="package-youtube-player" src="{{ $package->youtubeEmbedUrl() }}?autoplay=1&mute=1&playsinline=1&controls=1&rel=0&enablejsapi=1" title="{{ $package->name }} video" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen class="absolute inset-0 h-full w-full"></iframe>
+                        <a id="package-video-fallback" href="{{ $package->youtubeWatchUrl() }}" target="_blank" rel="noopener noreferrer" class="absolute inset-0 hidden items-center justify-center bg-slate-950 text-white" aria-label="Watch {{ $package->name }} on YouTube">
+                            <img src="{{ $package->youtubeThumbnailUrl() }}" alt="{{ $package->name }} video thumbnail" class="absolute inset-0 h-full w-full object-cover opacity-75">
+                            <span class="absolute inset-0 bg-slate-950/30"></span>
+                            <span class="relative rounded-full bg-red-600 px-5 py-3 text-sm font-bold shadow-xl"><i class="fa-brands fa-youtube mr-2"></i>Watch on YouTube</span>
+                        </a>
+                    </div>
                 @elseif($galleryImages->isNotEmpty())
                     <img src="{{ asset('storage/'.$galleryImages[0]) }}" alt="{{ $package->name }}">
                 @else
@@ -2233,5 +2237,36 @@
         button.classList.toggle('text-red-500', !saved);
         button.classList.toggle('border-red-300', !saved);
     }
+
 </script>
+@if($package->youtubeEmbedUrl())
+    @push('scripts')
+        <script>
+            (() => {
+                const setupYoutubePlayer = () => {
+                    const iframe = document.getElementById('package-youtube-player');
+                    const fallback = document.getElementById('package-video-fallback');
+                    if (!iframe || !fallback || !window.YT?.Player) return;
+                    new YT.Player(iframe, { events: { onError: () => {
+                        iframe.classList.add('hidden');
+                        fallback.classList.remove('hidden');
+                        fallback.classList.add('flex');
+                    } } });
+                };
+                if (window.YT?.Player) {
+                    setupYoutubePlayer();
+                } else {
+                    const previousCallback = window.onYouTubeIframeAPIReady;
+                    window.onYouTubeIframeAPIReady = () => {
+                        previousCallback?.();
+                        setupYoutubePlayer();
+                    };
+                    const script = document.createElement('script');
+                    script.src = 'https://www.youtube.com/iframe_api';
+                    document.head.appendChild(script);
+                }
+            })();
+        </script>
+    @endpush
+@endif
 @endpush

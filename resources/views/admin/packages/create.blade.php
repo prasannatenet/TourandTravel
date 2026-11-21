@@ -142,7 +142,7 @@
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-sm font-bold text-amber-700">05</span>
                 <div>
                     <h3 class="text-base font-bold text-slate-900">Package cover media <span class="font-normal text-slate-400">(optional)</span></h3>
-                    <p class="mt-1 text-sm text-slate-500">Choose either one cover photo or one video. Videos must be MP4, MOV, or WebM and no larger than 5 MB. Gallery photos are separate.</p>
+                    <p class="mt-1 text-sm text-slate-500">Choose either one cover photo or add a YouTube link for a cover video. Gallery photos are separate.</p>
                 </div>
             </div>
             <div class="px-5 py-5 sm:px-7">
@@ -153,11 +153,17 @@
                         <span class="mt-1 text-xs text-slate-400">JPG, PNG, or WebP · up to 4 MB</span>
                         <input id="package-image-file" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="mt-4 block w-full max-w-xs text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-indigo-700">
                     </label>
-                    <label for="package-video-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-5 py-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40">
+                    {{-- <label for="package-video-file" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-5 py-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40">
                         <span class="flex h-11 w-11 items-center justify-center rounded-full bg-white text-indigo-600 shadow-sm"><i class="fa-solid fa-video"></i></span>
                         <span class="mt-3 text-sm font-semibold text-slate-700">Or choose a cover video</span>
                         <span class="mt-1 text-xs text-slate-400">MP4, MOV, or WebM · up to 5 MB</span>
                         <input id="package-video-file" type="file" name="video" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm" class="mt-4 block w-full max-w-xs text-sm text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-indigo-700">
+                    </label> --}}
+                    <label for="package-video-link" class="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-5 py-6 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40">
+                        <span class="flex h-11 w-11 items-center justify-center rounded-full bg-white text-indigo-600 shadow-sm"><i class="fa-brands fa-youtube"></i></span>
+                        <span class="mt-3 text-sm font-semibold text-slate-700">Or add a cover video link</span>
+                        <span class="mt-1 text-xs text-slate-400">YouTube URL</span>
+                        <input id="package-video-link" type="url" name="video" value="{{ old('video') }}" placeholder="https://youtu.be/..." class="mt-4 block w-full max-w-xs text-sm text-slate-500">
                     </label>
                 </div>
                 @error('image') <p class="mt-2 text-xs font-medium text-red-600">{{ $message }}</p> @enderror
@@ -188,12 +194,12 @@
 <script>
     (() => {
         const imageInput = document.getElementById('package-image-file');
-        const videoInput = document.getElementById('package-video-file');
+        const videoInput = document.getElementById('package-video-link');
         imageInput?.addEventListener('change', () => {
             if (imageInput.files.length) videoInput.value = '';
         });
-        videoInput?.addEventListener('change', () => {
-            if (videoInput.files.length) imageInput.value = '';
+        videoInput?.addEventListener('input', () => {
+            if (videoInput.value.trim()) imageInput.value = '';
         });
     })();
 </script>
